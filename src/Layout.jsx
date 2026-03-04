@@ -39,7 +39,6 @@ const navigation = [
   { name: 'Payroll', href: 'Payroll', icon: DollarSign },
   { name: 'Payslips', href: 'Payslips', icon: FileText },
   { name: 'Reports', href: 'Reports', icon: BarChart3 },
-  { name: 'Database Demo', href: 'DatabaseDemo', icon: Settings },
   { name: 'Sign In', href: 'SignIn', icon: LogIn },
 ];
 

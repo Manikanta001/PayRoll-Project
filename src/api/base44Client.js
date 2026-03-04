@@ -300,7 +300,134 @@ export const base44 = {
   entities: {
     Employee: entityApi("Employee"),
     SalaryRecord: entityApi("SalaryRecord"),
-    Attendance: entityApi("Attendance"),
+    Attendance: {
+      async list() {
+        try {
+          const res = await axios.get(`${API_BASE}/attendance`);
+          return res.data || [];
+        } catch (error) {
+          console.error("Error fetching attendance:", error);
+          return [];
+        }
+      },
+      async create(data) {
+        try {
+          const res = await axios.post(`${API_BASE}/attendance`, data, {
+            headers: {
+              "x-user-role": localStorage.getItem(`${STORAGE_PREFIX}user_role`) || "admin",
+              "x-user-id": getCurrentUserId() || "",
+            },
+          });
+          return res.data;
+        } catch (error) {
+          console.error("Error creating attendance:", error);
+          throw error;
+        }
+      },
+      async update(id, data) {
+        try {
+          const res = await axios.patch(`${API_BASE}/attendance/${id}`, data, {
+            headers: {
+              "x-user-role": localStorage.getItem(`${STORAGE_PREFIX}user_role`) || "admin",
+              "x-user-id": getCurrentUserId() || "",
+            },
+          });
+          return res.data;
+        } catch (error) {
+          console.error("Error updating attendance:", error);
+          throw error;
+        }
+      },
+      async delete(id) {
+        try {
+          const res = await axios.delete(`${API_BASE}/attendance/${id}`, {
+            headers: {
+              "x-user-role": localStorage.getItem(`${STORAGE_PREFIX}user_role`) || "admin",
+              "x-user-id": getCurrentUserId() || "",
+            },
+          });
+          return { success: true };
+        } catch (error) {
+          console.error("Error deleting attendance:", error);
+          throw error;
+        }
+      },
+      async markDay(date, attendanceRecords) {
+        try {
+          const res = await axios.post(`${API_BASE}/attendance/mark-day`, {
+            date,
+            attendanceRecords,
+          }, {
+            headers: {
+              "x-user-role": localStorage.getItem(`${STORAGE_PREFIX}user_role`) || "admin",
+              "x-user-id": getCurrentUserId() || "",
+            },
+          });
+          return res.data?.records || [];
+        } catch (error) {
+          console.error("Error marking attendance:", error);
+          throw error;
+        }
+      },
+    },
+    Payslip: {
+      async list() {
+        try {
+          const res = await axios.get(`${API_BASE}/payslips`, {
+            headers: {
+              "x-user-role": localStorage.getItem(`${STORAGE_PREFIX}user_role`) || "employee",
+              "x-user-id": getCurrentUserId() || "",
+            },
+          });
+          return res.data || [];
+        } catch (error) {
+          console.error("Error fetching payslips:", error);
+          return [];
+        }
+      },
+      async create(data) {
+        try {
+          const res = await axios.post(`${API_BASE}/payslips`, data, {
+            headers: {
+              "x-user-role": localStorage.getItem(`${STORAGE_PREFIX}user_role`) || "admin",
+              "x-user-id": getCurrentUserId() || "",
+            },
+          });
+          return res.data;
+        } catch (error) {
+          console.error("Error creating payslip:", error);
+          throw error;
+        }
+      },
+      async update(id, data) {
+        try {
+          const res = await axios.patch(`${API_BASE}/payslips/${id}`, data, {
+            headers: {
+              "x-user-role": localStorage.getItem(`${STORAGE_PREFIX}user_role`) || "admin",
+              "x-user-id": getCurrentUserId() || "",
+            },
+          });
+          return res.data;
+        } catch (error) {
+          console.error("Error updating payslip:", error);
+          throw error;
+        }
+      },
+      async delete(id) {
+        try {
+          const res = await axios.delete(`${API_BASE}/payslips/${id}`, {
+            headers: {
+              "x-user-role": localStorage.getItem(`${STORAGE_PREFIX}user_role`) || "admin",
+              "x-user-id": getCurrentUserId() || "",
+            },
+          });
+          return { success: true };
+        } catch (error) {
+          console.error("Error deleting payslip:", error);
+          throw error;
+        }
+      },
+    },
     User: {
       async list() {
         const res = await axios.get(`${API_BASE}/users`);
@@ -318,13 +445,22 @@ export const base44 = {
       const meId = getCurrentUserId();
       if (!meId) return null;
       const res = await axios.get(`${API_BASE}/auth/me`, { params: { userId: meId } });
-      return res.data;
+      const user = res.data;
+      // Store user role for API headers
+      if (user?.role) {
+        localStorage.setItem(`${STORAGE_PREFIX}user_role`, user.role);
+      }
+      return user;
     },
 
     async loginWithEmailPassword(email, password) {
       const res = await axios.post(`${API_BASE}/auth/login`, { email, password });
       const user = res.data;
       setCurrentUserId(user._id || user.id);
+      // Store user role for API headers
+      if (user?.role) {
+        localStorage.setItem(`${STORAGE_PREFIX}user_role`, user.role);
+      }
       return user;
     },
 
@@ -341,6 +477,10 @@ export const base44 = {
         console.log("✅ Registration successful! User:", res.data);
         const user = res.data;
         setCurrentUserId(user._id || user.id);
+        // Store user role for API headers
+        if (user?.role) {
+          localStorage.setItem(`${STORAGE_PREFIX}user_role`, user.role);
+        }
         return user;
       } catch (error) {
         console.error("❌ Registration API error");
@@ -360,6 +500,7 @@ export const base44 = {
 
     logout() {
       storage.removeItem(AUTH_KEY);
+      localStorage.removeItem(`${STORAGE_PREFIX}user_role`);
       if (typeof window !== "undefined") {
         window.location.reload();
       }

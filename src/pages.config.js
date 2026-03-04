@@ -6,7 +6,6 @@ import Attendance from "./pages/Attendance.jsx";
 import Payroll from "./pages/Payroll.jsx";
 import Payslips from "./pages/Payslips.jsx";
 import Reports from "./pages/Reports.jsx";
-import DatabaseDemo from "./pages/DatabaseDemo.jsx";
 import UserManagement from "./pages/UserManagement.jsx";
 import SignIn from "./pages/SignIn.jsx";
 import Register from "./pages/Register.jsx";
@@ -22,7 +21,6 @@ export const pagesConfig = {
     Payroll,
     Payslips,
     Reports,
-    DatabaseDemo,
     UserManagement,
     SignIn,
     Register,

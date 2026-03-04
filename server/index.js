@@ -44,6 +44,40 @@ const userSchema = new mongoose.Schema(
 
 const User = mongoose.model("User", userSchema);
 
+// Attendance Schema - Store attendance records for each day
+const attendanceSchema = new mongoose.Schema(
+  {
+    employee_id: { type: String, required: true },
+    employee_name: { type: String, required: true },
+    date: { type: Date, required: true }, // Mark attendance for a specific date
+    status: { type: String, enum: ["Present", "Absent", "Leave"], default: "Present" },
+    notes: { type: String },
+  },
+  { timestamps: { createdAt: "created_date", updatedAt: "updated_date" } }
+);
+
+const Attendance = mongoose.model("Attendance", attendanceSchema);
+
+// Payslip Schema - Store payslips for employees
+const payslipSchema = new mongoose.Schema(
+  {
+    employee_id: { type: String, required: true },
+    employee_name: { type: String, required: true },
+    email: { type: String, required: true },
+    month: { type: String, required: true }, // Format: YYYY-MM
+    basic_salary: { type: Number, default: 0 },
+    allowances: { type: Number, default: 0 },
+    deductions: { type: Number, default: 0 },
+    net_salary: { type: Number, default: 0 },
+    present_days: { type: Number, default: 0 },
+    total_days: { type: Number, default: 0 },
+    notes: { type: String },
+  },
+  { timestamps: { createdAt: "created_date", updatedAt: "updated_date" } }
+);
+
+const Payslip = mongoose.model("Payslip", payslipSchema);
+
 // --- Auth routes ---
 
 app.post("/auth/register", async (req, res) => {
@@ -235,6 +269,268 @@ app.post("/users/invite", async (req, res) => {
   }
 });
 
+// --- ATTENDANCE ROUTES ---
+
+// Get all attendance records
+app.get("/attendance", async (_req, res) => {
+  try {
+    const records = await Attendance.find().sort({ date: -1 }).lean().exec();
+    res.json(records);
+  } catch (err) {
+    console.error("Get attendance error:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// Get attendance for a specific employee
+app.get("/attendance/:employeeId", async (req, res) => {
+  try {
+    const records = await Attendance.find({ employee_id: req.params.employeeId })
+      .sort({ date: -1 })
+      .lean()
+      .exec();
+    res.json(records);
+  } catch (err) {
+    console.error("Get employee attendance error:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// Mark attendance for multiple employees on a single day
+app.post("/attendance/mark-day", requireRole("admin", "hr"), async (req, res) => {
+  try {
+    const { date, attendanceRecords } = req.body; // attendanceRecords: [{ employee_id, employee_name, status }, ...]
+    if (!date || !attendanceRecords || !Array.isArray(attendanceRecords)) {
+      return res.status(400).json({ message: "date and attendanceRecords array are required" });
+    }
+
+    const dateObj = new Date(date);
+    const results = [];
+
+    for (const record of attendanceRecords) {
+      const { employee_id, employee_name, status } = record;
+      
+      // Find or create attendance record for this date
+      const existing = await Attendance.findOne({
+        employee_id,
+        date: {
+          $gte: new Date(dateObj.setHours(0, 0, 0, 0)),
+          $lt: new Date(dateObj.setHours(23, 59, 59, 999)),
+        },
+      }).exec();
+
+      let result;
+      if (existing) {
+        // Update existing record
+        existing.status = status;
+        result = await existing.save();
+      } else {
+        // Create new record
+        result = await Attendance.create({
+          employee_id,
+          employee_name,
+          date: dateObj,
+          status: status || "Present",
+        });
+      }
+      results.push(result);
+    }
+
+    res.status(201).json({ message: "Attendance marked successfully", records: results });
+  } catch (err) {
+    console.error("Mark attendance error:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// Create single attendance record
+app.post("/attendance", requireRole("admin", "hr"), async (req, res) => {
+  try {
+    const { employee_id, employee_name, date, status, notes } = req.body;
+    if (!employee_id || !employee_name || !date) {
+      return res.status(400).json({ message: "employee_id, employee_name, and date are required" });
+    }
+
+    const record = await Attendance.create({
+      employee_id,
+      employee_name,
+      date: new Date(date),
+      status: status || "Present",
+      notes,
+    });
+    res.status(201).json(record);
+  } catch (err) {
+    console.error("Create attendance error:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// Update attendance record
+app.patch("/attendance/:id", requireRole("admin", "hr"), async (req, res) => {
+  try {
+    const record = await Attendance.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+    })
+      .lean()
+      .exec();
+    if (!record) return res.status(404).json({ message: "Attendance record not found" });
+    res.json(record);
+  } catch (err) {
+    console.error("Update attendance error:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// Delete attendance record
+app.delete("/attendance/:id", requireRole("admin", "hr"), async (req, res) => {
+  try {
+    const record = await Attendance.findByIdAndDelete(req.params.id).lean().exec();
+    if (!record) return res.status(404).json({ message: "Attendance record not found" });
+    res.json({ message: "Attendance record deleted" });
+  } catch (err) {
+    console.error("Delete attendance error:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// --- SEED DATA ENDPOINT ---
+
+app.post("/seed-payslips", async (_req, res) => {
+  try {
+    // Clear existing payslips
+    await Payslip.deleteMany({});
+
+    // Get all users to use as employees
+    const users = await User.find().lean().exec();
+    
+    if (users.length === 0) {
+      return res.status(400).json({ message: "No users found. Create users first." });
+    }
+
+    // Create sample payslips for each user for the last 3 months
+    const payslips = [];
+    const months = ["2026-01", "2025-12", "2025-11"];
+    
+    users.forEach(user => {
+      months.forEach(month => {
+        payslips.push({
+          employee_id: user._id.toString(),
+          employee_name: user.full_name,
+          email: user.email,
+          month: month,
+          basic_salary: 50000,
+          allowances: 5000,
+          deductions: 5000,
+          net_salary: 50000,
+          present_days: 22,
+          total_days: 22,
+          notes: `Payslip for ${month}`,
+        });
+      });
+    });
+
+    const created = await Payslip.insertMany(payslips);
+    res.json({ message: `Created ${created.length} sample payslips`, count: created.length });
+  } catch (err) {
+    console.error("Seed payslips error:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// --- PAYSLIP ROUTES ---
+
+// Get all payslips
+app.get("/payslips", async (req, res) => {
+  try {
+    const userRole = req.headers["x-user-role"];
+    const userId = req.headers["x-user-id"];
+    
+    let query;
+    if (userRole === "employee") {
+      // Employees can only see their own payslips
+      query = Payslip.find({ employee_id: userId });
+    } else {
+      // Admin and HR can see all payslips
+      query = Payslip.find();
+    }
+
+    const payslips = await query.sort({ month: -1 }).lean().exec();
+    res.json(payslips);
+  } catch (err) {
+    console.error("Get payslips error:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// Create payslip
+app.post("/payslips", requireRole("admin", "hr"), async (req, res) => {
+  try {
+    const { employee_id, employee_name, email, month, basic_salary, allowances, deductions, present_days, total_days, notes } = req.body;
+    if (!employee_id || !employee_name || !month) {
+      return res.status(400).json({ message: "employee_id, employee_name, and month are required" });
+    }
+
+    const net_salary = (basic_salary || 0) + (allowances || 0) - (deductions || 0);
+
+    const payslip = await Payslip.create({
+      employee_id,
+      employee_name,
+      email,
+      month,
+      basic_salary,
+      allowances,
+      deductions,
+      net_salary,
+      present_days,
+      total_days,
+      notes,
+    });
+    res.status(201).json(payslip);
+  } catch (err) {
+    console.error("Create payslip error:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// Update payslip
+app.patch("/payslips/:id", requireRole("admin", "hr"), async (req, res) => {
+  try {
+    const updates = { ...req.body };
+    
+    // Recalculate net salary if any salary component changed
+    if (updates.basic_salary !== undefined || updates.allowances !== undefined || updates.deductions !== undefined) {
+      const payslip = await Payslip.findById(req.params.id).exec();
+      const basic = updates.basic_salary !== undefined ? updates.basic_salary : payslip.basic_salary;
+      const allowances = updates.allowances !== undefined ? updates.allowances : payslip.allowances;
+      const deductions = updates.deductions !== undefined ? updates.deductions : payslip.deductions;
+      updates.net_salary = basic + allowances - deductions;
+    }
+
+    const payslip = await Payslip.findByIdAndUpdate(req.params.id, updates, {
+      new: true,
+    })
+      .lean()
+      .exec();
+    if (!payslip) return res.status(404).json({ message: "Payslip not found" });
+    res.json(payslip);
+  } catch (err) {
+    console.error("Update payslip error:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// Delete payslip
+app.delete("/payslips/:id", requireRole("admin", "hr"), async (req, res) => {
+  try {
+    const payslip = await Payslip.findByIdAndDelete(req.params.id).lean().exec();
+    if (!payslip) return res.status(404).json({ message: "Payslip not found" });
+    res.json({ message: "Payslip deleted" });
+  } catch (err) {
+    console.error("Delete payslip error:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 // --- Start server ---
 
 async function start() {
@@ -248,7 +544,7 @@ async function start() {
     console.log("✅ Connected to MongoDB successfully");
     console.log("📦 Database: payroll | Collection: users");
     
-    app.listen(PORT, () => {
+    app.listen(PORT, async () => {
       console.log("🚀 API server started!");
       console.log(`📍 Backend URL: http://localhost:${PORT}`);
       console.log("📍 Frontend URL: http://localhost:5173");
@@ -266,6 +562,41 @@ async function start() {
       console.log("   • admin   - Full access to all features");
       console.log("   • hr      - HR access (manage users, payroll)");
       console.log("   • employee - Limited access (only see own data & payslips)");
+
+      // Auto-seed payslips if none exist
+      try {
+        const payslipCount = await Payslip.countDocuments().exec();
+        if (payslipCount === 0) {
+          const users = await User.find().lean().exec();
+          if (users.length > 0) {
+            const payslips = [];
+            const months = ["2026-01", "2025-12", "2025-11"];
+            
+            users.forEach(user => {
+              months.forEach(month => {
+                payslips.push({
+                  employee_id: user._id.toString(),
+                  employee_name: user.full_name,
+                  email: user.email,
+                  month: month,
+                  basic_salary: 50000,
+                  allowances: 5000,
+                  deductions: 5000,
+                  net_salary: 50000,
+                  present_days: 22,
+                  total_days: 22,
+                  notes: `Payslip for ${month}`,
+                });
+              });
+            });
+
+            await Payslip.insertMany(payslips);
+            console.log(`📊 Auto-seeded ${payslips.length} sample payslips`);
+          }
+        }
+      } catch (seedErr) {
+        console.warn("⚠️ Could not auto-seed payslips:", seedErr.message);
+      }
     });
   } catch (err) {
     console.error("\n❌ Failed to start server:");

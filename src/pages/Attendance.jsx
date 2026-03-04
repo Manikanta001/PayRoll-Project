@@ -1,37 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Download, Calendar } from "lucide-react";
-import AttendanceTable from '@/components/payroll/AttendanceTable';
-import AttendanceForm from '@/components/payroll/AttendanceForm';
+import { Plus, Search, Calendar, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { format, subMonths } from 'date-fns';
+import { format } from 'date-fns';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Card, CardContent } from "@/components/ui/card";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 export default function Attendance() {
   const { user } = useAuth();
   const canMarkAttendance = user?.role === 'admin' || user?.role === 'hr';
   
-  const [showForm, setShowForm] = useState(false);
-  const [editingAttendance, setEditingAttendance] = useState(null);
-  const [deleteRecord, setDeleteRecord] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [attendanceData, setAttendanceData] = useState({});
   const [searchQuery, setSearchQuery] = useState('');
-  const [monthFilter, setMonthFilter] = useState(format(new Date(), 'yyyy-MM'));
 
   const queryClient = useQueryClient();
 
@@ -40,122 +34,74 @@ export default function Attendance() {
     queryFn: () => base44.entities.Employee.list(),
   });
 
-  const { data: attendance = [], isLoading: loadingAttendance } = useQuery({
+  const { data: allAttendance = [], isLoading: loadingAttendance } = useQuery({
     queryKey: ['attendance'],
     queryFn: () => base44.entities.Attendance.list(),
   });
 
   const isLoading = loadingEmployees || loadingAttendance;
 
-  const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Attendance.create(data),
+  const markAttendanceMutation = useMutation({
+    mutationFn: (data) => base44.entities.Attendance.markDay(selectedDate, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['attendance'] });
-      setShowForm(false);
-      toast.success('Attendance recorded successfully');
+      setAttendanceData({});
+      toast.success('✅ Attendance marked successfully');
+    },
+    onError: () => {
+      toast.error('❌ Failed to mark attendance');
     },
   });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Attendance.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['attendance'] });
-      setShowForm(false);
-      setEditingAttendance(null);
-      toast.success('Attendance updated successfully');
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Attendance.delete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['attendance'] });
-      setDeleteRecord(null);
-      toast.success('Attendance record deleted');
-    },
-  });
-
-  const handleSubmit = (data) => {
-    if (editingAttendance) {
-      updateMutation.mutate({ id: editingAttendance.id, data });
-    } else {
-      createMutation.mutate(data);
-    }
-  };
-
-  const handleEdit = (record) => {
-    setEditingAttendance(record);
-    setShowForm(true);
-  };
-
-  const handleDelete = (record) => {
-    setDeleteRecord(record);
-  };
-
-  const handleMarkDay = (record, day, isPresent) => {
-    // Update attendance status for specific day
-    const attendanceDays = record.attendance_days || {};
-    attendanceDays[day] = isPresent;
-    
-    // Calculate present and absent days
-    const presentDays = Object.values(attendanceDays).filter(v => v === true).length;
-    const absentDays = Object.values(attendanceDays).filter(v => v === false).length;
-    
-    const updatedData = {
-      ...record,
-      present_days: presentDays,
-      absent_days: absentDays,
-      attendance_days: attendanceDays
-    };
-    
-    updateMutation.mutate({ id: record.id, data: updatedData });
-  };
-
-  // Generate month options (last 12 months)
-  const monthOptions = [];
-  for (let i = 0; i < 12; i++) {
-    const date = subMonths(new Date(), i);
-    monthOptions.push({
-      value: format(date, 'yyyy-MM'),
-      label: format(date, 'MMMM yyyy')
-    });
-  }
-
-  const filteredRecords = attendance.filter(record => {
-    const matchesSearch = !searchQuery || 
-      record.employee_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      record.employee_id?.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesMonth = !monthFilter || record.month === monthFilter;
-    
-    return matchesSearch && matchesMonth;
-  });
-
-  // Stats for selected month
-  const monthRecords = attendance.filter(r => r.month === monthFilter);
-  const totalPresent = monthRecords.reduce((sum, r) => sum + (r.present_days || 0), 0);
-  const totalAbsent = monthRecords.reduce((sum, r) => sum + (r.absent_days || 0), 0);
-  const totalLeave = monthRecords.reduce((sum, r) => sum + (r.leave_days || 0), 0);
-  const avgAttendance = monthRecords.length > 0
-    ? Math.round(monthRecords.reduce((sum, r) => {
-        return sum + (r.working_days > 0 ? (r.present_days / r.working_days) * 100 : 100);
-      }, 0) / monthRecords.length)
-    : 0;
 
   const activeEmployees = employees.filter(e => e.status === 'Active' || !e.status);
+
+  const filteredEmployees = useMemo(() => {
+    return activeEmployees.filter(emp =>
+      !searchQuery ||
+      emp.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      emp.email?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [activeEmployees, searchQuery]);
+
+  const handleStatusChange = (empId, status) => {
+    setAttendanceData(prev => ({
+      ...prev,
+      [empId]: status,
+    }));
+  };
+
+  const handleMarkAttendance = () => {
+    const records = Object.entries(attendanceData).map(([empId, status]) => {
+      const emp = employees.find(e => e.id === empId);
+      return {
+        employee_id: empId,
+        employee_name: emp?.name || 'Unknown',
+        status: status || 'Present',
+      };
+    });
+
+    if (records.length === 0) {
+      toast.error('Please select at least one employee');
+      return;
+    }
+
+    markAttendanceMutation.mutate(records);
+  };
+
+  // Get today's attendance records
+  const todayRecords = allAttendance.filter(record => {
+    const recordDate = new Date(record.date).toLocaleDateString();
+    const selectedDateObj = new Date(selectedDate).toLocaleDateString();
+    return recordDate === selectedDateObj;
+  });
+
+  // Get recent attendance (last 20 records)
+  const recentRecords = allAttendance.slice(0, 20);
 
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-10 w-40" />
-        </div>
-        <div className="grid grid-cols-4 gap-4">
-          {[1,2,3,4].map(i => (
-            <Skeleton key={i} className="h-24 rounded-lg" />
-          ))}
-        </div>
+        <Skeleton className="h-8 w-48" />
         <Skeleton className="h-96 rounded-lg" />
       </div>
     );
@@ -168,125 +114,170 @@ export default function Attendance() {
         <div>
           <h1 className="text-2xl md:text-3xl font-bold">Attendance</h1>
           <p className="text-muted-foreground">
-            {canMarkAttendance ? "Track and manage employee attendance records" : "View your attendance records"}
+            {canMarkAttendance ? "Mark attendance for all employees" : "View attendance records"}
           </p>
         </div>
-        {canMarkAttendance && (
-          <Button onClick={() => { setEditingAttendance(null); setShowForm(true); }}>
-            <Plus className="h-4 w-4 mr-2" />
-            Record Attendance
-          </Button>
-        )}
       </div>
 
-      {/* Employee info message */}
-      {user?.role === 'employee' && (
+      {!canMarkAttendance && (
         <div className="rounded-lg bg-blue-50 border border-blue-200 p-4">
           <p className="text-sm text-blue-700">
-            ℹ️ You can view your attendance percentage below. Only HR and Admin can mark/edit attendance.
+            ℹ️ You can view attendance records below. Only HR and Admin can mark attendance.
           </p>
         </div>
       )}
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {canMarkAttendance && (
         <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">Records</p>
-            <p className="text-2xl font-bold">{monthRecords.length}</p>
-            <p className="text-xs text-muted-foreground">of {activeEmployees.length} employees</p>
+          <CardHeader>
+            <CardTitle>Mark Attendance for {format(new Date(selectedDate), 'MMMM d, yyyy')}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Date picker */}
+            <div className="flex gap-4 items-end">
+              <div className="flex-1">
+                <label className="block text-sm font-medium mb-2">Select Date</label>
+                <Input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="max-w-xs"
+                />
+              </div>
+              <div className="text-sm text-muted-foreground">
+                {todayRecords.length} employees marked
+              </div>
+            </div>
+
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name or email..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+
+            {/* Employee list */}
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {filteredEmployees.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  No employees found
+                </p>
+              ) : (
+                filteredEmployees.map(emp => {
+                  const status = attendanceData[emp.id] || '';
+                  return (
+                    <div key={emp.id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50">
+                      <div className="flex-1">
+                        <p className="font-medium">{emp.name}</p>
+                        <p className="text-sm text-muted-foreground">{emp.email}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant={status === 'Present' ? 'default' : 'outline'}
+                          onClick={() => handleStatusChange(emp.id, 'Present')}
+                          className="gap-1"
+                        >
+                          <CheckCircle2 className="h-4 w-4" />
+                          Present
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={status === 'Absent' ? 'destructive' : 'outline'}
+                          onClick={() => handleStatusChange(emp.id, 'Absent')}
+                          className="gap-1"
+                        >
+                          <XCircle className="h-4 w-4" />
+                          Absent
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={status === 'Leave' ? 'secondary' : 'outline'}
+                          onClick={() => handleStatusChange(emp.id, 'Leave')}
+                          className="gap-1"
+                        >
+                          <AlertCircle className="h-4 w-4" />
+                          Leave
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Submit button */}
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setAttendanceData({});
+                  setSearchQuery('');
+                }}
+              >
+                Clear
+              </Button>
+              <Button
+                onClick={handleMarkAttendance}
+                disabled={markAttendanceMutation.isPending}
+              >
+                {markAttendanceMutation.isPending ? 'Marking...' : `Mark ${Object.keys(attendanceData).length} Employees`}
+              </Button>
+            </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">Total Present</p>
-            <p className="text-2xl font-bold text-green-600">{totalPresent}</p>
-            <p className="text-xs text-muted-foreground">days</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">Total Absent</p>
-            <p className="text-2xl font-bold text-red-500">{totalAbsent}</p>
-            <p className="text-xs text-muted-foreground">days</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">Avg Attendance</p>
-            <p className="text-2xl font-bold text-primary">{avgAttendance}%</p>
-            <p className="text-xs text-muted-foreground">this month</p>
-          </CardContent>
-        </Card>
-      </div>
+      )}
 
-      {/* Filters */}
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by employee name or ID..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <Select value={monthFilter} onValueChange={setMonthFilter}>
-          <SelectTrigger className="w-full md:w-48">
-            <Calendar className="h-4 w-4 mr-2" />
-            <SelectValue placeholder="Select month" />
-          </SelectTrigger>
-          <SelectContent>
-            {monthOptions.map(opt => (
-              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Results count */}
-      <p className="text-sm text-muted-foreground">
-        Showing {filteredRecords.length} records for {format(new Date(monthFilter + '-01'), 'MMMM yyyy')}
-      </p>
-
-      {/* Attendance Table */}
-      <AttendanceTable
-        records={filteredRecords}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        onMarkDay={handleMarkDay}
-      />
-
-      {/* Add/Edit Form */}
-      <AttendanceForm
-        open={showForm}
-        onOpenChange={setShowForm}
-        attendance={editingAttendance}
-        employees={activeEmployees}
-        onSubmit={handleSubmit}
-        isLoading={createMutation.isPending || updateMutation.isPending}
-      />
-
-      {/* Delete Confirmation */}
-      <AlertDialog open={!!deleteRecord} onOpenChange={() => setDeleteRecord(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Attendance Record</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this attendance record for {deleteRecord?.employee_name}?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => deleteMutation.mutate(deleteRecord.id)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Recent attendance records */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Attendance Records</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {recentRecords.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">
+              No attendance records yet
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Employee</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {recentRecords.map(record => (
+                    <TableRow key={record._id}>
+                      <TableCell className="font-medium">{record.employee_name}</TableCell>
+                      <TableCell>{format(new Date(record.date), 'MMM d, yyyy')}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            record.status === 'Present'
+                              ? 'default'
+                              : record.status === 'Absent'
+                              ? 'destructive'
+                              : 'secondary'
+                          }
+                        >
+                          {record.status}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
