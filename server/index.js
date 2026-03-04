@@ -235,46 +235,6 @@ app.post("/users/invite", async (req, res) => {
   }
 });
 
-// --- DEMO DATA ENDPOINT ---
-app.post("/demo/load-sample-data", requireRole("admin", "hr"), async (req, res) => {
-  try {
-    // Check if demo data already loaded
-    const existingEmployees = await User.countDocuments({ role: "employee" });
-    if (existingEmployees > 0) {
-      return res.json({ message: "Demo data already exists", success: false });
-    }
-
-    const demoUsers = [
-      { full_name: "Rajesh Kumar", email: "rajesh.kumar@company.com", role: "employee", salary: 50000 },
-      { full_name: "Priya Sharma", email: "priya.sharma@company.com", role: "employee", salary: 55000 },
-      { full_name: "Amit Patel", email: "amit.patel@company.com", role: "employee", salary: 48000 },
-      { full_name: "Neha Singh", email: "neha.singh@company.com", role: "employee", salary: 60000 },
-      { full_name: "Vikram Reddy", email: "vikram.reddy@company.com", role: "employee", salary: 52000 },
-      { full_name: "Anjali Verma", email: "anjali.verma@company.com", role: "employee", salary: 56000 },
-      { full_name: "Rohan Desai", email: "rohan.desai@company.com", role: "employee", salary: 51000 },
-      { full_name: "Zara Khan", email: "zara.khan@company.com", role: "employee", salary: 58000 },
-    ];
-
-    const hashedUsers = await Promise.all(
-      demoUsers.map(async (user) => ({
-        ...user,
-        passwordHash: await bcrypt.hash("demo@123", 10),
-        is_active: true,
-      }))
-    );
-
-    const created = await User.insertMany(hashedUsers);
-    res.json({ 
-      success: true, 
-      message: `Created ${created.length} demo employees. Email and password for all: demo@123 (email used as username)`,
-      count: created.length 
-    });
-  } catch (err) {
-    console.error("Load demo data error:", err);
-    res.status(500).json({ message: "Failed to load demo data", error: err.message });
-  }
-});
-
 // --- Start server ---
 
 async function start() {
@@ -302,7 +262,6 @@ async function start() {
       console.log("   • PATCH /users/:id - (Admin/HR only) Update user");
       console.log("   • DELETE /users/:id - (Admin/HR only) Delete user");
       console.log("   • POST /users/invite - (Admin/HR) Invite new users");
-      console.log("   • POST /demo/load-sample-data - (Admin/HR) Load 8 demo employees");
       console.log("\n🔐 Role-Based Access:");
       console.log("   • admin   - Full access to all features");
       console.log("   • hr      - HR access (manage users, payroll)");

@@ -68,12 +68,7 @@ export default function PayslipModal({ open, onOpenChange, salary, employee, onD
         <div ref={payslipRef} className="payslip bg-white p-6 rounded-lg">
           {/* Company Header */}
           <div className="text-center mb-6">
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <Building2 className="h-8 w-8 text-primary" />
-              <h1 className="text-2xl font-bold text-primary">Acme Corporation</h1>
-            </div>
-            <p className="text-sm text-muted-foreground">123 Business Avenue, Tech City, TC 12345</p>
-            <p className="text-sm text-muted-foreground">Phone: (555) 123-4567 | Email: hr@acmecorp.com</p>
+            <h1 className="text-3xl font-bold text-primary">PayRoll Pro</h1>
           </div>
 
           <Separator className="my-4" />
@@ -185,6 +180,7 @@ export default function PayslipModal({ open, onOpenChange, salary, employee, onD
           <div className="mt-6 pt-4 border-t text-xs text-muted-foreground text-center">
             <p>This is a computer-generated payslip and does not require a signature.</p>
             <p className="mt-1">Generated on {format(new Date(), 'MMMM dd, yyyy')}</p>
+            <p className="mt-3 font-semibold text-gray-500">Designed by Manikanta</p>
           </div>
         </div>
       </DialogContent>

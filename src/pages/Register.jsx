@@ -14,6 +14,7 @@ export default function Register() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [role, setRole] = useState("employee");
+  const [rolePassword, setRolePassword] = useState("");
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
@@ -28,6 +29,17 @@ export default function Register() {
       setError("Passwords do not match.");
       return;
     }
+    
+    // Validate role password for HR/Admin
+    if (role === "hr" && rolePassword !== "hr@9878") {
+      setError("Invalid HR password. Correct password is required to register as HR.");
+      return;
+    }
+    if (role === "admin" && rolePassword !== "admin@9878") {
+      setError("Invalid Admin password. Correct password is required to register as Admin.");
+      return;
+    }
+    
     try {
       console.log("Attempting registration with:", { fullName, email, role });
       const user = await registerWithEmailPassword(fullName, email, password, role);
@@ -57,7 +69,7 @@ export default function Register() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-slate-50 to-slate-100">
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader>
-          <CardTitle className="text-2xl text-center">Create a PayrollPro account</CardTitle>
+          <CardTitle className="text-2xl text-center">Create a PayRoll Pro account</CardTitle>
           <CardDescription className="text-center">
             Register with your work email to manage payroll and attendance.
           </CardDescription>
@@ -118,6 +130,22 @@ export default function Register() {
                 </SelectContent>
               </Select>
             </div>
+            {(role === "hr" || role === "admin") && (
+              <div className="space-y-2">
+                <Label htmlFor="rolePassword">
+                  {role === "hr" ? "HR" : "Admin"} Registration Password</Label>
+                <Input
+                  id="rolePassword"
+                  type="password"
+                  placeholder="Enter secure password"
+                  value={rolePassword}
+                  onChange={(e) => setRolePassword(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  A secure password is required to register as {role === "hr" ? "HR" : "Admin"}.
+                </p>
+              </div>
+            )}
             {error && <p className="text-sm text-red-600">{error}</p>}
           </CardContent>
           <CardFooter className="flex flex-col gap-2">

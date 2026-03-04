@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/lib/AuthContext';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -23,6 +24,9 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 
 export default function Attendance() {
+  const { user } = useAuth();
+  const canMarkAttendance = user?.role === 'admin' || user?.role === 'hr';
+  
   const [showForm, setShowForm] = useState(false);
   const [editingAttendance, setEditingAttendance] = useState(null);
   const [deleteRecord, setDeleteRecord] = useState(null);
@@ -88,6 +92,25 @@ export default function Attendance() {
     setDeleteRecord(record);
   };
 
+  const handleMarkDay = (record, day, isPresent) => {
+    // Update attendance status for specific day
+    const attendanceDays = record.attendance_days || {};
+    attendanceDays[day] = isPresent;
+    
+    // Calculate present and absent days
+    const presentDays = Object.values(attendanceDays).filter(v => v === true).length;
+    const absentDays = Object.values(attendanceDays).filter(v => v === false).length;
+    
+    const updatedData = {
+      ...record,
+      present_days: presentDays,
+      absent_days: absentDays,
+      attendance_days: attendanceDays
+    };
+    
+    updateMutation.mutate({ id: record.id, data: updatedData });
+  };
+
   // Generate month options (last 12 months)
   const monthOptions = [];
   for (let i = 0; i < 12; i++) {
@@ -144,13 +167,26 @@ export default function Attendance() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold">Attendance</h1>
-          <p className="text-muted-foreground">Track employee attendance records</p>
+          <p className="text-muted-foreground">
+            {canMarkAttendance ? "Track and manage employee attendance records" : "View your attendance records"}
+          </p>
         </div>
-        <Button onClick={() => { setEditingAttendance(null); setShowForm(true); }}>
-          <Plus className="h-4 w-4 mr-2" />
-          Record Attendance
-        </Button>
+        {canMarkAttendance && (
+          <Button onClick={() => { setEditingAttendance(null); setShowForm(true); }}>
+            <Plus className="h-4 w-4 mr-2" />
+            Record Attendance
+          </Button>
+        )}
       </div>
+
+      {/* Employee info message */}
+      {user?.role === 'employee' && (
+        <div className="rounded-lg bg-blue-50 border border-blue-200 p-4">
+          <p className="text-sm text-blue-700">
+            ℹ️ You can view your attendance percentage below. Only HR and Admin can mark/edit attendance.
+          </p>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -218,6 +254,7 @@ export default function Attendance() {
         records={filteredRecords}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        onMarkDay={handleMarkDay}
       />
 
       {/* Add/Edit Form */}
