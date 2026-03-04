@@ -1,7 +1,10 @@
 import axios from "axios";
 
 const STORAGE_PREFIX = "local_base44_mock_v1:";
-const API_BASE = "http://localhost:4000";
+
+// Read API_BASE from environment variable (for production deployment)
+// For Render backend, set VITE_API_BASE environment variable in Vercel
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
 
 function safeParseJson(raw, fallback) {
   try {

@@ -9,6 +9,8 @@ import EmployeeTable from '@/components/payroll/EmployeeTable';
 import EmployeeForm from '@/components/payroll/EmployeeForm';
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import { useAuth } from '@/lib/AuthContext';
+import RequireElevated from '@/components/RequireElevated';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,6 +36,9 @@ const DEPARTMENTS = ["All", "Engineering", "Human Resources", "Finance", "Market
 const STATUSES = ["All", "Active", "Inactive", "On Leave", "Terminated"];
 
 export default function Employees() {
+  const { user } = useAuth();
+  const canManageEmployees = user?.role === 'admin' || user?.role === 'hr';
+  
   const [showForm, setShowForm] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState(null);
   const [deleteEmployee, setDeleteEmployee] = useState(null);
@@ -161,19 +166,36 @@ export default function Employees() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold">Employees</h1>
-          <p className="text-muted-foreground">Manage your organization's workforce</p>
+          <p className="text-muted-foreground">
+            {user?.role === 'employee' 
+              ? "View your company employees and payslips" 
+              : "Manage your organization's workforce"}
+          </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={exportToCSV}>
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
-          <Button onClick={() => { setEditingEmployee(null); setShowForm(true); }}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Employee
-          </Button>
+          {canManageEmployees && (
+            <>
+              <Button variant="outline" onClick={exportToCSV}>
+                <Download className="h-4 w-4 mr-2" />
+                Export
+              </Button>
+              <Button onClick={() => { setEditingEmployee(null); setShowForm(true); }}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Employee
+              </Button>
+            </>
+          )}
         </div>
       </div>
+
+      {/* Role-based message for employees */}
+      {user?.role === 'employee' && (
+        <div className="rounded-lg bg-blue-50 border border-blue-200 p-4">
+          <p className="text-sm text-blue-700">
+            ℹ️ Employees can view their own data and payslips. Full employee management is available to HR and Admins only.
+          </p>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-col md:flex-row gap-4">
@@ -220,6 +242,7 @@ export default function Employees() {
         onEdit={handleEdit}
         onDelete={handleDelete}
         onView={handleView}
+        userRole={user?.role}
       />
 
       {/* Add/Edit Form */}

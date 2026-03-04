@@ -19,10 +19,13 @@ const statusColors = {
   Terminated: "bg-red-100 text-red-700 border-red-200",
 };
 
-export default function EmployeeTable({ employees, onEdit, onDelete, onView }) {
+export default function EmployeeTable({ employees, onEdit, onDelete, onView, userRole = 'employee' }) {
   const getInitials = (name) => {
     return name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'NA';
   };
+
+  // Check if user can edit/delete (only HR and Admin)
+  const canModify = userRole && (userRole === 'admin' || userRole === 'hr');
 
   return (
     <div className="rounded-lg border bg-card overflow-hidden">
@@ -86,17 +89,21 @@ export default function EmployeeTable({ employees, onEdit, onDelete, onView }) {
                         <Eye className="h-4 w-4 mr-2" />
                         View Details
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => onEdit?.(employee)}>
-                        <Edit className="h-4 w-4 mr-2" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        onClick={() => onDelete?.(employee)}
-                        className="text-destructive focus:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
+                      {canModify && (
+                        <>
+                          <DropdownMenuItem onClick={() => onEdit?.(employee)}>
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => onDelete?.(employee)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>

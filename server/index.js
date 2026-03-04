@@ -9,9 +9,24 @@ dotenv.config();
 // Support both local and cloud MongoDB with fallback
 const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/payroll";
 const PORT = process.env.PORT || 4000;
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+const NODE_ENV = process.env.NODE_ENV || "development";
 
 const app = express();
-app.use(cors({ origin: "http://localhost:5173", credentials: false }));
+
+// Enable CORS for frontend (local development or production deployment)
+const corsOptions = {
+  origin: FRONTEND_URL,
+  credentials: false,
+  methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type"],
+};
+
+if (NODE_ENV === "production") {
+  console.log(`🔐 CORS enabled for: ${FRONTEND_URL}`);
+}
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // --- Mongoose models ---
@@ -114,9 +129,20 @@ app.post("/auth/verify-password", async (req, res) => {
   }
 });
 
+// --- MIDDLEWARE: Check if user has required role ---
+function requireRole(...allowedRoles) {
+  return (req, _res, next) => {
+    const userRole = req.headers["x-user-role"];
+    if (!allowedRoles.includes(userRole)) {
+      return _res.status(403).json({ message: `Access denied. Required role: ${allowedRoles.join(", ")}` });
+    }
+    next();
+  };
+}
+
 // --- User management routes ---
 
-app.get("/users", async (_req, res) => {
+app.get("/users", requireRole("admin", "hr"), async (_req, res) => {
   try {
     const users = await User.find().sort({ created_date: -1 }).lean().exec();
     users.forEach((u) => delete u.passwordHash);
@@ -129,7 +155,16 @@ app.get("/users", async (_req, res) => {
 
 app.get("/users/:id", async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).lean().exec();
+    const userRole = req.headers["x-user-role"];
+    const userId = req.headers["x-user-id"];
+    const requestedId = req.params.id;
+    
+    // Employee can only see their own data
+    if (userRole === "employee" && userId !== requestedId) {
+      return res.status(403).json({ message: "You can only access your own data" });
+    }
+    
+    const user = await User.findById(requestedId).lean().exec();
     if (!user) return res.status(404).json({ message: "User not found" });
     delete user.passwordHash;
     res.json(user);
@@ -139,7 +174,8 @@ app.get("/users/:id", async (req, res) => {
   }
 });
 
-app.patch("/users/:id", async (req, res) => {
+// Only HR and Admin can edit users
+app.patch("/users/:id", requireRole("admin", "hr"), async (req, res) => {
   try {
     const updates = { ...req.body };
     delete updates.passwordHash;
@@ -154,6 +190,18 @@ app.patch("/users/:id", async (req, res) => {
     res.json(user);
   } catch (err) {
     console.error("Update user error:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// Only HR and Admin can delete users
+app.delete("/users/:id", requireRole("admin", "hr"), async (req, res) => {
+  try {
+    const user = await User.findByIdAndDelete(req.params.id).lean().exec();
+    if (!user) return res.status(404).json({ message: "User not found" });
+    res.json({ message: "User deleted successfully" });
+  } catch (err) {
+    console.error("Delete user error:", err);
     res.status(500).json({ message: "Internal server error" });
   }
 });
@@ -187,6 +235,46 @@ app.post("/users/invite", async (req, res) => {
   }
 });
 
+// --- DEMO DATA ENDPOINT ---
+app.post("/demo/load-sample-data", requireRole("admin", "hr"), async (req, res) => {
+  try {
+    // Check if demo data already loaded
+    const existingEmployees = await User.countDocuments({ role: "employee" });
+    if (existingEmployees > 0) {
+      return res.json({ message: "Demo data already exists", success: false });
+    }
+
+    const demoUsers = [
+      { full_name: "Rajesh Kumar", email: "rajesh.kumar@company.com", role: "employee", salary: 50000 },
+      { full_name: "Priya Sharma", email: "priya.sharma@company.com", role: "employee", salary: 55000 },
+      { full_name: "Amit Patel", email: "amit.patel@company.com", role: "employee", salary: 48000 },
+      { full_name: "Neha Singh", email: "neha.singh@company.com", role: "employee", salary: 60000 },
+      { full_name: "Vikram Reddy", email: "vikram.reddy@company.com", role: "employee", salary: 52000 },
+      { full_name: "Anjali Verma", email: "anjali.verma@company.com", role: "employee", salary: 56000 },
+      { full_name: "Rohan Desai", email: "rohan.desai@company.com", role: "employee", salary: 51000 },
+      { full_name: "Zara Khan", email: "zara.khan@company.com", role: "employee", salary: 58000 },
+    ];
+
+    const hashedUsers = await Promise.all(
+      demoUsers.map(async (user) => ({
+        ...user,
+        passwordHash: await bcrypt.hash("demo@123", 10),
+        is_active: true,
+      }))
+    );
+
+    const created = await User.insertMany(hashedUsers);
+    res.json({ 
+      success: true, 
+      message: `Created ${created.length} demo employees. Email and password for all: demo@123 (email used as username)`,
+      count: created.length 
+    });
+  } catch (err) {
+    console.error("Load demo data error:", err);
+    res.status(500).json({ message: "Failed to load demo data", error: err.message });
+  }
+});
+
 // --- Start server ---
 
 async function start() {
@@ -209,12 +297,16 @@ async function start() {
       console.log("   • POST /auth/login - Sign in");
       console.log("   • GET  /auth/me - Get user info");
       console.log("\n🔗 API Endpoints:");
-      console.log("   • POST /auth/register");
-      console.log("   • POST /auth/login");
-      console.log("   • GET  /auth/me?userId=<id>");
-      console.log("   • POST /auth/verify-password");
-      console.log("   • GET  /users");
-      console.log("   • POST /users/invite");
+      console.log("   • GET  /users - (Admin/HR only) List all users");
+      console.log("   • GET  /users/:id - Get user by ID (Employee can only see own data)");
+      console.log("   • PATCH /users/:id - (Admin/HR only) Update user");
+      console.log("   • DELETE /users/:id - (Admin/HR only) Delete user");
+      console.log("   • POST /users/invite - (Admin/HR) Invite new users");
+      console.log("   • POST /demo/load-sample-data - (Admin/HR) Load 8 demo employees");
+      console.log("\n🔐 Role-Based Access:");
+      console.log("   • admin   - Full access to all features");
+      console.log("   • hr      - HR access (manage users, payroll)");
+      console.log("   • employee - Limited access (only see own data & payslips)");
     });
   } catch (err) {
     console.error("\n❌ Failed to start server:");
