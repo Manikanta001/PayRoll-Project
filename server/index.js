@@ -19,7 +19,7 @@ const corsOptions = {
   origin: FRONTEND_URL,
   credentials: false,
   methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type"],
+  allowedHeaders: ["Content-Type", "x-user-role", "x-user-id"],
 };
 
 if (NODE_ENV === "production") {
