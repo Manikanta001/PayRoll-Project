@@ -303,11 +303,13 @@ export const base44 = {
     Attendance: {
       async list() {
         try {
+          console.log("📥 Fetching attendance from:", `${API_BASE}/attendance`);
           const res = await axios.get(`${API_BASE}/attendance`);
+          console.log("✅ Fetched attendance:", res.data?.length || 0, "records");
           return res.data || [];
         } catch (error) {
-          console.error("Error fetching attendance:", error);
-          return [];
+          console.error("❌ Error fetching attendance:", error.response?.status, error.response?.data || error.message);
+          throw error;
         }
       },
       async create(data) {
@@ -373,16 +375,22 @@ export const base44 = {
     Payslip: {
       async list() {
         try {
+          console.log("📥 Fetching payslips from:", `${API_BASE}/payslips`);
+          const userRole = localStorage.getItem(`${STORAGE_PREFIX}user_role`) || "employee";
+          const userId = getCurrentUserId() || "";
+          console.log("🔐 User role:", userRole, "| UserID:", userId);
+          
           const res = await axios.get(`${API_BASE}/payslips`, {
             headers: {
-              "x-user-role": localStorage.getItem(`${STORAGE_PREFIX}user_role`) || "employee",
-              "x-user-id": getCurrentUserId() || "",
+              "x-user-role": userRole,
+              "x-user-id": userId,
             },
           });
+          console.log("✅ Fetched payslips:", res.data?.length || 0, "records");
           return res.data || [];
         } catch (error) {
-          console.error("Error fetching payslips:", error);
-          return [];
+          console.error("❌ Error fetching payslips:", error.response?.status, error.response?.data || error.message);
+          throw error;
         }
       },
       async create(data) {

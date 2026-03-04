@@ -29,14 +29,16 @@ export default function Attendance() {
 
   const queryClient = useQueryClient();
 
-  const { data: employees = [], isLoading: loadingEmployees } = useQuery({
+  const { data: employees = [], isLoading: loadingEmployees, error: employeesError } = useQuery({
     queryKey: ['employees'],
     queryFn: () => base44.entities.Employee.list(),
+    staleTime: 5 * 60 * 1000,
   });
 
-  const { data: allAttendance = [], isLoading: loadingAttendance } = useQuery({
+  const { data: allAttendance = [], isLoading: loadingAttendance, error: attendanceError } = useQuery({
     queryKey: ['attendance'],
     queryFn: () => base44.entities.Attendance.list(),
+    staleTime: 5 * 60 * 1000,
   });
 
   const isLoading = loadingEmployees || loadingAttendance;
@@ -103,6 +105,24 @@ export default function Attendance() {
       <div className="space-y-6">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-96 rounded-lg" />
+      </div>
+    );
+  }
+
+  if (attendanceError) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold">Attendance</h1>
+        </div>
+        <Card className="py-12">
+          <CardContent className="text-center text-red-600">
+            <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p className="font-semibold">Error loading attendance</p>
+            <p className="text-sm mt-2">{attendanceError?.message || 'Failed to fetch attendance from server'}</p>
+            <p className="text-xs mt-4 text-muted-foreground">Check console for more details or verify the API is running</p>
+          </CardContent>
+        </Card>
       </div>
     );
   }

@@ -17,14 +17,16 @@ export default function Payslips() {
   const [monthFilter, setMonthFilter] = useState('');
   const [viewPayslip, setViewPayslip] = useState(null);
 
-  const { data: employees = [], isLoading: loadingEmployees } = useQuery({
+  const { data: employees = [], isLoading: loadingEmployees, error: employeesError } = useQuery({
     queryKey: ['employees'],
     queryFn: () => base44.entities.Employee.list(),
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  const { data: payslips = [], isLoading: loadingPayslips } = useQuery({
+  const { data: payslips = [], isLoading: loadingPayslips, error: payslipsError } = useQuery({
     queryKey: ['payslips'],
     queryFn: () => base44.entities.Payslip.list(),
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   const isLoading = loadingEmployees || loadingPayslips;
@@ -152,6 +154,24 @@ PayRoll Pro Team
             <Skeleton key={i} className="h-48 rounded-lg" />
           ))}
         </div>
+      </div>
+    );
+  }
+
+  if (payslipsError) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold">Payslips</h1>
+        </div>
+        <Card className="py-12">
+          <CardContent className="text-center text-red-600">
+            <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p className="font-semibold">Error loading payslips</p>
+            <p className="text-sm mt-2">{payslipsError?.message || 'Failed to fetch payslips from server'}</p>
+            <p className="text-xs mt-4 text-muted-foreground">Check console for more details or verify the API is running</p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
