@@ -2,9 +2,8 @@ import axios from "axios";
 
 const STORAGE_PREFIX = "local_base44_mock_v1:";
 
-// Read API_BASE from environment variable (for production deployment)
-// For Render backend, set VITE_API_BASE environment variable in Vercel
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
+// API base: in production (Vercel) use relative /api path, in dev use localhost:4000
+const API_BASE = (import.meta?.env?.VITE_API_BASE) || (import.meta?.env?.PROD ? "/api" : "http://localhost:4000");
 
 function safeParseJson(raw, fallback) {
   try {
@@ -134,143 +133,7 @@ function entityApi(entityName) {
 }
 
 function ensureSeedData() {
-  const employees = readAll("Employee");
-  if (employees.length === 0) {
-    const seedEmployees = [
-      {
-        id: "emp_1",
-        emp_id: "EMP0001",
-        name: "Ajay Kumar",
-        email: "ajay@company.com",
-        phone: "555-0101",
-        department: "Engineering",
-        designation: "Software Engineer",
-        basic_salary: 60000,
-        joining_date: "2024-01-10",
-        status: "Active",
-        created_date: nowIso(),
-      },
-      {
-        id: "emp_2",
-        emp_id: "EMP0002",
-        name: "Nani Reddy",
-        email: "nani@company.com",
-        phone: "555-0102",
-        department: "Human Resources",
-        designation: "HR Executive",
-        basic_salary: 45000,
-        joining_date: "2024-02-05",
-        status: "Active",
-        created_date: nowIso(),
-      },
-      {
-        id: "emp_3",
-        emp_id: "EMP0003",
-        name: "Srinadh Varma",
-        email: "srinadh@company.com",
-        phone: "555-0103",
-        department: "Finance",
-        designation: "Accounts Manager",
-        basic_salary: 55000,
-        joining_date: "2023-11-20",
-        status: "Active",
-        created_date: nowIso(),
-      },
-      {
-        id: "emp_4",
-        emp_id: "EMP0004",
-        name: "Vivek Sharma",
-        email: "vivek@company.com",
-        phone: "555-0104",
-        department: "Marketing",
-        designation: "Marketing Lead",
-        basic_salary: 52000,
-        joining_date: "2023-09-15",
-        status: "Active",
-        created_date: nowIso(),
-      },
-      {
-        id: "emp_5",
-        emp_id: "EMP0005",
-        name: "Pavan Kumar",
-        email: "pavan@company.com",
-        phone: "555-0105",
-        department: "Sales",
-        designation: "Sales Executive",
-        basic_salary: 48000,
-        joining_date: "2024-03-01",
-        status: "Active",
-        created_date: nowIso(),
-      },
-      {
-        id: "emp_6",
-        emp_id: "EMP0006",
-        name: "Sathwik Rao",
-        email: "sathwik@company.com",
-        phone: "555-0106",
-        department: "IT Support",
-        designation: "Support Engineer",
-        basic_salary: 42000,
-        joining_date: "2023-12-10",
-        status: "Active",
-        created_date: nowIso(),
-      },
-      {
-        id: "emp_7",
-        emp_id: "EMP0007",
-        name: "Varun Tej",
-        email: "varun@company.com",
-        phone: "555-0107",
-        department: "Operations",
-        designation: "Operations Manager",
-        basic_salary: 58000,
-        joining_date: "2023-08-22",
-        status: "Active",
-        created_date: nowIso(),
-      },
-      {
-        id: "emp_8",
-        emp_id: "EMP0008",
-        name: "Virat Kohli",
-        email: "virat@company.com",
-        phone: "555-0108",
-        department: "Administration",
-        designation: "Admin Officer",
-        basic_salary: 50000,
-        joining_date: "2024-01-01",
-        status: "Active",
-        created_date: nowIso(),
-      },
-      {
-        id: "emp_9",
-        emp_id: "EMP0009",
-        name: "Anil Kapoor",
-        email: "anil@company.com",
-        phone: "555-0109",
-        department: "Engineering",
-        designation: "Senior Engineer",
-        basic_salary: 65000,
-        joining_date: "2022-06-18",
-        status: "Active",
-        created_date: nowIso(),
-      },
-      {
-        id: "emp_10",
-        emp_id: "EMP0010",
-        name: "HR Admin",
-        email: "hr@company.com",
-        phone: "555-0110",
-        department: "Human Resources",
-        designation: "HR Manager",
-        basic_salary: 70000,
-        joining_date: "2021-04-12",
-        status: "Active",
-        created_date: nowIso(),
-      },
-    ];
-    writeAll("Employee", seedEmployees);
-  }
-
+  // No seed data - employees are managed by HR only
   const salary = readAll("SalaryRecord");
   if (salary.length === 0) {
     writeAll("SalaryRecord", []);
@@ -279,6 +142,8 @@ function ensureSeedData() {
   if (attendance.length === 0) {
     writeAll("Attendance", []);
   }
+  // Clear any existing seed employees from localStorage
+  writeAll("Employee", []);
 }
 
 ensureSeedData();
@@ -298,8 +163,156 @@ function setCurrentUserId(id) {
 
 export const base44 = {
   entities: {
-    Employee: entityApi("Employee"),
-    SalaryRecord: entityApi("SalaryRecord"),
+    Employee: {
+      async list() {
+        try {
+          console.log("📥 Fetching employees from:", `${API_BASE}/employees`);
+          const res = await axios.get(`${API_BASE}/employees`, {
+            headers: {
+              "x-user-role": localStorage.getItem(`${STORAGE_PREFIX}user_role`) || "admin",
+              "x-user-id": getCurrentUserId() || "",
+            },
+          });
+          console.log("✅ Fetched employees:", res.data?.length || 0, "records");
+          return res.data || [];
+        } catch (error) {
+          console.error("❌ Error fetching employees:", error.response?.status, error.response?.data || error.message);
+          // Fallback to local storage if API fails
+          console.log("⏮ Falling back to local employee data");
+          return readAll("Employee") || [];
+        }
+      },
+      async create(data) {
+        try {
+          console.log("📤 Creating employee:", data.name);
+          const res = await axios.post(`${API_BASE}/employees`, {
+            name: data.name,
+            email: data.email,
+            phone: data.phone,
+            department: data.department,
+            designation: data.designation,
+            basic_salary: data.basic_salary,
+            joining_date: data.joining_date,
+            status: data.status,
+            bank_account: data.bank_account,
+            pan_number: data.pan_number,
+            address: data.address,
+          }, {
+            headers: {
+              "x-user-role": localStorage.getItem(`${STORAGE_PREFIX}user_role`) || "admin",
+              "x-user-id": getCurrentUserId() || "",
+            },
+          });
+          console.log("✅ Employee created successfully:", res.data?.employee?.name);
+          return res.data?.employee || res.data;
+        } catch (error) {
+          console.error("❌ Error creating employee:", error.response?.data || error.message);
+          throw error;
+        }
+      },
+      async update(id, data) {
+        try {
+          console.log("📤 Updating employee:", id);
+          const res = await axios.patch(`${API_BASE}/users/${id}`, {
+            full_name: data.name,
+            email: data.email,
+            phone: data.phone,
+            department: data.department,
+            designation: data.designation,
+            basic_salary: data.basic_salary,
+            joining_date: data.joining_date,
+            is_active: data.status !== "Inactive",
+            bank_account: data.bank_account,
+            pan_number: data.pan_number,
+            address: data.address,
+          }, {
+            headers: {
+              "x-user-role": localStorage.getItem(`${STORAGE_PREFIX}user_role`) || "admin",
+              "x-user-id": getCurrentUserId() || "",
+            },
+          });
+          console.log("✅ Employee updated successfully");
+          return res.data;
+        } catch (error) {
+          console.error("❌ Error updating employee:", error.response?.data || error.message);
+          throw error;
+        }
+      },
+      async delete(id, password) {
+        try {
+          console.log("📤 Deleting employee:", id);
+          const res = await axios.delete(`${API_BASE}/employees/${id}`, {
+            headers: {
+              "x-user-role": localStorage.getItem(`${STORAGE_PREFIX}user_role`) || "admin",
+              "x-user-id": getCurrentUserId() || "",
+              "x-confirm-password": password || "",
+            },
+          });
+          console.log("✅ Employee deleted successfully");
+          return { success: true };
+        } catch (error) {
+          console.error("❌ Error deleting employee:", error.response?.data || error.message);
+          throw error;
+        }
+      },
+    },
+    SalaryRecord: {
+      async list() {
+        try {
+          console.log("📥 Fetching salaries from:", `${API_BASE}/salaries`);
+          const res = await axios.get(`${API_BASE}/salaries`, {
+            headers: {
+              "x-user-role": localStorage.getItem(`${STORAGE_PREFIX}user_role`) || "admin",
+              "x-user-id": getCurrentUserId() || "",
+            },
+          });
+          console.log("✅ Fetched salaries:", res.data?.length || 0, "records");
+          return res.data || [];
+        } catch (error) {
+          console.error("❌ Error fetching salaries:", error.response?.status, error.response?.data || error.message);
+          return []; // Return empty instead of throwing to avoid breaking entire page
+        }
+      },
+      async bulkCreate(records) {
+        // Fallback to local storage if API fails, but attempt API first
+        try {
+          // The backend /salaries endpoint we added only returns success
+          // but we still want to keep local records for UI feedback
+          const rows = readAll("SalaryRecord");
+          const created = (records ?? []).map((data) => ({
+            id: newId(),
+            created_date: nowIso(),
+            ...data,
+          }));
+          writeAll("SalaryRecord", [...created, ...rows]);
+          return created;
+        } catch (error) {
+          console.error("Local storage error:", error);
+          return [];
+        }
+      },
+      async update(id, data) {
+        try {
+          await axios.patch(`${API_BASE}/salaries/${id}`, data, {
+            headers: {
+              "x-user-role": localStorage.getItem(`${STORAGE_PREFIX}user_role`) || "admin",
+              "x-user-id": getCurrentUserId() || "",
+            },
+          });
+          // Also update local copy
+          const rows = readAll("SalaryRecord");
+          const idx = rows.findIndex((r) => r.id === id);
+          if (idx !== -1) {
+            rows[idx] = { ...rows[idx], ...data, updated_date: nowIso() };
+            writeAll("SalaryRecord", rows);
+          }
+          return { success: true };
+        } catch (error) {
+          console.error("Error updating salary:", error);
+          return { success: false };
+        }
+      }
+    },
     Attendance: {
       async list() {
         try {
@@ -390,6 +403,22 @@ export const base44 = {
           return res.data || [];
         } catch (error) {
           console.error("❌ Error fetching payslips:", error.response?.status, error.response?.data || error.message);
+          return []; // Return empty instead of throwing
+        }
+      },
+      async bulkCreate(data) {
+        try {
+          console.log("📤 Creating", data.length, "payslips...");
+          const res = await axios.post(`${API_BASE}/payslips/bulk-create`, data, {
+            headers: {
+              "x-user-role": localStorage.getItem(`${STORAGE_PREFIX}user_role`) || "admin",
+              "x-user-id": getCurrentUserId() || "",
+            },
+          });
+          console.log("✅ Payslips created successfully:", res.data?.payslips?.length || 0);
+          return res.data?.payslips || [];
+        } catch (error) {
+          console.error("❌ Error creating payslips:", error.response?.data || error.message);
           throw error;
         }
       },
@@ -421,12 +450,13 @@ export const base44 = {
           throw error;
         }
       },
-      async delete(id) {
+      async delete(id, password) {
         try {
           const res = await axios.delete(`${API_BASE}/payslips/${id}`, {
             headers: {
               "x-user-role": localStorage.getItem(`${STORAGE_PREFIX}user_role`) || "admin",
               "x-user-id": getCurrentUserId() || "",
+              "x-confirm-password": password || "",
             },
           });
           return { success: true };

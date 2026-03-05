@@ -117,26 +117,26 @@ export default function PayslipModal({ open, onOpenChange, salary, employee, onD
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span>Basic Salary</span>
-                  <span className="font-medium">${salary.basic_salary?.toLocaleString()}</span>
+                  <span className="font-medium">₹{salary.basic_salary?.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>HRA (20%)</span>
-                  <span className="font-medium">${salary.hra?.toLocaleString()}</span>
+                  <span className="font-medium">₹{salary.hra?.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>DA (10%)</span>
-                  <span className="font-medium">${salary.da?.toLocaleString()}</span>
+                  <span className="font-medium">₹{salary.da?.toLocaleString()}</span>
                 </div>
                 {salary.other_allowances > 0 && (
                   <div className="flex justify-between">
                     <span>Other Allowances</span>
-                    <span className="font-medium">${salary.other_allowances?.toLocaleString()}</span>
+                    <span className="font-medium">₹{salary.other_allowances?.toLocaleString()}</span>
                   </div>
                 )}
                 <Separator className="my-2" />
                 <div className="flex justify-between font-semibold">
                   <span>Gross Salary</span>
-                  <span className="text-green-600">${salary.gross_salary?.toLocaleString()}</span>
+                  <span className="text-green-600">₹{salary.gross_salary?.toLocaleString()}</span>
                 </div>
               </div>
             </div>
@@ -147,22 +147,22 @@ export default function PayslipModal({ open, onOpenChange, salary, employee, onD
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span>PF (12%)</span>
-                  <span className="font-medium">${salary.pf_deduction?.toLocaleString()}</span>
+                  <span className="font-medium">₹{salary.pf_deduction?.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Tax (5%)</span>
-                  <span className="font-medium">${salary.tax_deduction?.toLocaleString()}</span>
+                  <span className="font-medium">₹{salary.tax_deduction?.toLocaleString()}</span>
                 </div>
                 {salary.other_deductions > 0 && (
                   <div className="flex justify-between">
                     <span>Other Deductions</span>
-                    <span className="font-medium">${salary.other_deductions?.toLocaleString()}</span>
+                    <span className="font-medium">₹{salary.other_deductions?.toLocaleString()}</span>
                   </div>
                 )}
                 <Separator className="my-2" />
                 <div className="flex justify-between font-semibold">
                   <span>Total Deductions</span>
-                  <span className="text-red-600">${salary.total_deductions?.toLocaleString()}</span>
+                  <span className="text-red-600">₹{salary.deductions?.toLocaleString()}</span>
                 </div>
               </div>
             </div>
@@ -173,7 +173,7 @@ export default function PayslipModal({ open, onOpenChange, salary, employee, onD
           {/* Net Salary */}
           <div className="bg-primary/5 rounded-lg p-4 text-center">
             <p className="text-sm text-muted-foreground mb-1">Net Salary</p>
-            <p className="text-3xl font-bold text-primary">${salary.net_salary?.toLocaleString()}</p>
+            <p className="text-3xl font-bold text-primary">₹{salary.net_salary?.toLocaleString()}</p>
           </div>
 
           {/* Footer */}

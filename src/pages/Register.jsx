@@ -146,6 +146,11 @@ export default function Register() {
                 </p>
               </div>
             )}
+            {role === "employee" && (
+              <p className="text-xs text-muted-foreground bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                Note: Employees must be added by HR first. Your default login password is <strong>YourFirstName9878</strong>. You can register here to set a new password.
+              </p>
+            )}
             {error && <p className="text-sm text-red-600">{error}</p>}
           </CardContent>
           <CardFooter className="flex flex-col gap-2">

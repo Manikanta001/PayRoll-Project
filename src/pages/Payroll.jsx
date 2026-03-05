@@ -40,9 +40,17 @@ export default function Payroll() {
   const isLoading = loadingEmployees || loadingSalaries || loadingAttendance;
 
   const createSalariesMutation = useMutation({
-    mutationFn: (records) => base44.entities.SalaryRecord.bulkCreate(records),
+    mutationFn: async (records) => {
+      // Create SalaryRecords for local tracking
+      await base44.entities.SalaryRecord.bulkCreate(records);
+      
+      // Create Payslips on the backend
+      const payslips = await base44.entities.Payslip.bulkCreate(records);
+      return payslips;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['salaries'] });
+      queryClient.invalidateQueries({ queryKey: ['payslips'] });
       setShowProcessModal(false);
       toast.success('Payroll processed successfully');
     },

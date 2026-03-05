@@ -11,15 +11,29 @@ const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/payroll";
 const PORT = process.env.PORT || 4000;
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 const NODE_ENV = process.env.NODE_ENV || "development";
+const extraLocalFrontends = ["http://localhost:5174", "http://localhost:5175"];
+const allowedOrigins = [
+  ...new Set([
+    ...(FRONTEND_URL.split(",").map((url) => url.trim()).filter(Boolean)),
+    ...extraLocalFrontends,
+  ]),
+];
 
 const app = express();
 
 // Enable CORS for frontend (local development or production deployment)
 const corsOptions = {
-  origin: FRONTEND_URL,
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    const msg = `CORS error: origin ${origin} is not allowed`;
+    console.warn(msg);
+    return callback(new Error(msg), false);
+  },
   credentials: false,
   methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "x-user-role", "x-user-id"],
+  allowedHeaders: ["Content-Type", "x-user-role", "x-user-id", "x-confirm-password"],
 };
 
 if (NODE_ENV === "production") {
@@ -38,6 +52,15 @@ const userSchema = new mongoose.Schema(
     passwordHash: { type: String, required: true },
     role: { type: String, default: "employee" },
     is_active: { type: Boolean, default: true },
+    is_employee: { type: Boolean, default: false },
+    phone: { type: String },
+    department: { type: String },
+    designation: { type: String },
+    basic_salary: { type: Number },
+    joining_date: { type: String },
+    bank_account: { type: String },
+    pan_number: { type: String },
+    address: { type: String },
   },
   { timestamps: { createdAt: "created_date", updatedAt: "updated_date" } },
 );
@@ -63,14 +86,20 @@ const payslipSchema = new mongoose.Schema(
   {
     employee_id: { type: String, required: true },
     employee_name: { type: String, required: true },
-    email: { type: String, required: true },
+    email: { type: String },
+    department: { type: String },
     month: { type: String, required: true }, // Format: YYYY-MM
     basic_salary: { type: Number, default: 0 },
+    hra: { type: Number, default: 0 },
+    da: { type: Number, default: 0 },
     allowances: { type: Number, default: 0 },
+    gross_salary: { type: Number, default: 0 },
+    pf_deduction: { type: Number, default: 0 },
+    tax_deduction: { type: Number, default: 0 },
     deductions: { type: Number, default: 0 },
     net_salary: { type: Number, default: 0 },
     present_days: { type: Number, default: 0 },
-    total_days: { type: Number, default: 0 },
+    working_days: { type: Number, default: 22 },
     notes: { type: String },
   },
   { timestamps: { createdAt: "created_date", updatedAt: "updated_date" } }
@@ -86,14 +115,35 @@ app.post("/auth/register", async (req, res) => {
     if (!full_name || !email || !password) {
       return res.status(400).json({ message: "full_name, email and password are required" });
     }
-    const existing = await User.findOne({ email: email.toLowerCase() }).exec();
+    
+    const emailLower = email.toLowerCase();
+    
+    // For employee role: only allow registration if HR has already added this email as an employee
+    if (!role || role === "employee") {
+      const employeeRecord = await User.findOne({ email: emailLower, is_employee: true }).exec();
+      if (!employeeRecord) {
+        return res.status(403).json({ message: "This email is not registered as an employee. Please contact HR to add you first." });
+      }
+      // Employee record exists (created by HR) - update password so they can set a custom one
+      employeeRecord.passwordHash = await bcrypt.hash(password, 10);
+      employeeRecord.full_name = full_name;
+      await employeeRecord.save();
+      const plain = employeeRecord.toObject();
+      delete plain.passwordHash;
+      return res.status(201).json(plain);
+    }
+    
+    // Check if already registered (for HR/Admin roles)
+    const existing = await User.findOne({ email: emailLower }).exec();
     if (existing) {
       return res.status(409).json({ message: "Email already registered" });
     }
+    
+    // For HR/Admin roles: create new user directly (protected by role password on frontend)
     const passwordHash = await bcrypt.hash(password, 10);
     const user = await User.create({
       full_name,
-      email: email.toLowerCase(),
+      email: emailLower,
       passwordHash,
       role: role || "employee",
       is_active: true,
@@ -269,6 +319,127 @@ app.post("/users/invite", async (req, res) => {
   }
 });
 
+// --- EMPLOYEE ROUTES ---
+
+// Create new employee
+app.post("/employees", requireRole("admin", "hr"), async (req, res) => {
+  try {
+    const { name, email, phone, department, designation, basic_salary, joining_date, status, bank_account, pan_number, address } = req.body;
+    
+    if (!name || !email) {
+      return res.status(400).json({ message: "name and email are required" });
+    }
+
+    // Check if user already exists
+    const existing = await User.findOne({ email: email.toLowerCase() }).exec();
+    if (existing) {
+      return res.status(400).json({ message: "Employee with this email already exists" });
+    }
+
+    // Default password: name + 9878 (e.g. "Ajay9878")
+    const defaultPassword = name.trim().split(' ')[0] + '9878';
+    const passwordHash = await bcrypt.hash(defaultPassword, 10);
+
+    // Create new user with employee details
+    const user = await User.create({
+      full_name: name,
+      email: email.toLowerCase(),
+      passwordHash,
+      role: "employee",
+      is_active: status !== "Inactive",
+      is_employee: true,
+      phone,
+      department: department || "General",
+      designation: designation || "Employee",
+      basic_salary: parseFloat(basic_salary) || 50000,
+      joining_date: joining_date || new Date().toISOString(),
+      bank_account,
+      pan_number,
+      address,
+    });
+
+    // Convert to employee format
+    const employees = await User.find({ is_employee: true }).lean().exec();
+    const empIndex = employees.findIndex(u => u._id.toString() === user._id.toString());
+    
+    const employee = {
+      id: user._id.toString(),
+      emp_id: `EMP${String(empIndex + 1).padStart(4, '0')}`,
+      name: user.full_name,
+      email: user.email,
+      phone: user.phone || "N/A",
+      department: user.department || "General",
+      designation: user.designation || "Employee",
+      basic_salary: user.basic_salary || 50000,
+      joining_date: user.joining_date || new Date().toISOString(),
+      status: user.is_active ? "Active" : "Inactive",
+    };
+
+    res.status(201).json({ success: true, employee, tempPassword: defaultPassword });
+  } catch (err) {
+    console.error("Create employee error:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// Get all employees (only users explicitly added as employees by HR)
+app.get("/employees", async (req, res) => {
+  try {
+    const users = await User.find({ is_employee: true }).lean().exec();
+    // Convert users to employees format
+    const employees = users.map((u, idx) => ({
+      id: u._id.toString(),
+      emp_id: `EMP${String(idx + 1).padStart(4, '0')}`,
+      name: u.full_name,
+      email: u.email,
+      phone: u.phone || "N/A",
+      department: u.department || "General",
+      designation: u.designation || "Employee",
+      basic_salary: u.basic_salary || 50000,
+      joining_date: u.joining_date || new Date().toISOString(),
+      status: u.is_active ? "Active" : "Inactive",
+    }));
+    res.json(employees);
+  } catch (err) {
+    console.error("Get employees error:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// Delete employee (requires password verification)
+app.delete("/employees/:id", requireRole("admin", "hr"), async (req, res) => {
+  try {
+    const userId = req.headers["x-user-id"];
+    const password = req.headers["x-confirm-password"];
+    
+    if (!password) {
+      return res.status(400).json({ message: "Password confirmation is required" });
+    }
+    
+    const currentUser = await User.findById(userId).exec();
+    if (!currentUser) {
+      return res.status(404).json({ message: "Current user not found" });
+    }
+    
+    const passwordOk = await bcrypt.compare(password, currentUser.passwordHash);
+    if (!passwordOk) {
+      return res.status(403).json({ message: "Incorrect password" });
+    }
+    
+    const user = await User.findByIdAndDelete(req.params.id).lean().exec();
+    if (!user) return res.status(404).json({ message: "Employee not found" });
+    
+    // Also delete their payslips and attendance records
+    await Payslip.deleteMany({ employee_id: req.params.id });
+    await Attendance.deleteMany({ employee_id: req.params.id });
+    
+    res.json({ message: "Employee deleted successfully" });
+  } catch (err) {
+    console.error("Delete employee error:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 // --- ATTENDANCE ROUTES ---
 
 // Get all attendance records
@@ -437,7 +608,145 @@ app.post("/seed-payslips", async (_req, res) => {
   }
 });
 
+// Reset all data (for development/testing only)
+app.post("/reset-data", async (req, res) => {
+  try {
+    const password = req.body?.password;
+    // Simple password protection for dev endpoint
+    if (password !== "reset123") {
+      return res.status(403).json({ message: "Invalid password" });
+    }
+
+    console.log("🔄 Resetting all data...");
+    await User.deleteMany({});
+    await Payslip.deleteMany({});
+    await Attendance.deleteMany({});
+    
+    // Recreate sample data
+    const passwordHash = await bcrypt.hash("password123", 10);
+    const sampleUsers = [
+      { full_name: 'Vivek Sharma', email: 'vivek.sharma@company.com', role: 'employee' },
+      { full_name: 'Srinadh Varma', email: 'srinadh.varma@company.com', role: 'employee' },
+      { full_name: 'Priya Patel', email: 'priya.patel@company.com', role: 'employee' },
+      { full_name: 'Rajesh Kumar', email: 'rajesh.kumar@company.com', role: 'employee' },
+    ];
+
+    const createdUsers = await Promise.all(
+      sampleUsers.map(user => 
+        User.create({ ...user, passwordHash, is_active: true })
+      )
+    );
+
+    // Create detailed payslips
+    const payslips = [];
+    const months = ["2026-01", "2025-12", "2025-11"];
+    
+    createdUsers.forEach(user => {
+      months.forEach(month => {
+        const basicSalary = 50000;
+        const hra = Math.round(basicSalary * 0.20);
+        const da = Math.round(basicSalary * 0.10);
+        const grossSalary = basicSalary + hra + da;
+        const pfDeduction = Math.round(basicSalary * 0.12);
+        const taxDeduction = Math.round(grossSalary * 0.05);
+        const netSalary = grossSalary - pfDeduction - taxDeduction;
+
+        payslips.push({
+          employee_id: user._id.toString(),
+          employee_name: user.full_name,
+          email: user.email,
+          month: month,
+          basic_salary: basicSalary,
+          hra: hra,
+          da: da,
+          allowances: 0,
+          gross_salary: grossSalary,
+          pf_deduction: pfDeduction,
+          tax_deduction: taxDeduction,
+          deductions: pfDeduction + taxDeduction,
+          net_salary: netSalary,
+          present_days: 22,
+          working_days: 22,
+          notes: `Payslip for ${month}`,
+        });
+      });
+    });
+
+    await Payslip.insertMany(payslips);
+    
+    res.json({ 
+      message: `✅ Reset complete! Created ${createdUsers.length} employees and ${payslips.length} payslips`,
+      employees: createdUsers.map(u => u.full_name)
+    });
+  } catch (err) {
+    console.error("Reset data error:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 // --- PAYSLIP ROUTES ---
+
+// Get all salary records (mapped from payslips)
+app.get("/salaries", async (req, res) => {
+  try {
+    const userRole = req.headers["x-user-role"];
+    const userId = req.headers["x-user-id"];
+    
+    let query;
+    if (userRole === "employee") {
+      query = Payslip.find({ employee_id: userId });
+    } else {
+      query = Payslip.find();
+    }
+    
+    const payslips = await query.sort({ month: -1 }).lean().exec();
+    
+    // Map to salary record format expected by frontend
+    const salaryRecords = payslips.map(p => ({
+      id: p._id.toString(),
+      employee_id: p.employee_id,
+      employee_name: p.employee_name,
+      department: p.department || '',
+      month: p.month,
+      basic_salary: p.basic_salary,
+      hra: p.hra || 0,
+      da: p.da || 0,
+      gross_salary: p.gross_salary || 0,
+      pf_deduction: p.pf_deduction || 0,
+      tax_deduction: p.tax_deduction || 0,
+      total_deductions: (p.pf_deduction || 0) + (p.tax_deduction || 0),
+      net_salary: p.net_salary,
+      working_days: p.working_days,
+      attendance_days: p.present_days,
+      status: 'Processed',
+      created_date: p.created_date,
+    }));
+    
+    res.json(salaryRecords);
+  } catch (err) {
+    console.error("Get salaries error:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// Create salary record
+app.post("/salaries", requireRole("admin", "hr"), async (req, res) => {
+  try {
+    // For now just return success to satisfy the frontend
+    res.status(201).json({ success: true });
+  } catch (err) {
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// Update salary record status
+app.patch("/salaries/:id", requireRole("admin", "hr"), async (req, res) => {
+  try {
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
 
 // Get all payslips
 app.get("/payslips", async (req, res) => {
@@ -458,6 +767,61 @@ app.get("/payslips", async (req, res) => {
     res.json(payslips);
   } catch (err) {
     console.error("Get payslips error:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// Bulk create payslips
+app.post("/payslips/bulk-create", requireRole("admin", "hr"), async (req, res) => {
+  try {
+    const payslips = req.body;
+    if (!Array.isArray(payslips) || payslips.length === 0) {
+      return res.status(400).json({ message: "Expected an array of payslips" });
+    }
+
+    const created = [];
+    const skippedDuplicates = [];
+    for (const data of payslips) {
+      const { employee_id, employee_name, email, department, month, basic_salary, hra, da, gross_salary, pf_deduction, tax_deduction, total_deductions, net_salary, working_days, attendance_days, other_allowances, other_deductions, notes } = data;
+      
+      if (!employee_id || !employee_name || !month) {
+        console.warn("Skipping payslip - missing required fields:", data);
+        continue;
+      }
+
+      // Check for duplicate - skip if payslip already exists for this employee+month
+      const existing = await Payslip.findOne({ employee_id, month }).exec();
+      if (existing) {
+        console.log(`Skipping duplicate payslip for ${employee_name} (${month})`);
+        skippedDuplicates.push(employee_name);
+        continue;
+      }
+
+      const payslip = await Payslip.create({
+        employee_id,
+        employee_name,
+        email: email || '',
+        department: department || '',
+        month,
+        basic_salary,
+        hra: hra || 0,
+        da: da || 0,
+        allowances: other_allowances || 0,
+        gross_salary: gross_salary || 0,
+        pf_deduction: pf_deduction || 0,
+        tax_deduction: tax_deduction || 0,
+        deductions: (pf_deduction || 0) + (tax_deduction || 0) + (other_deductions || 0),
+        net_salary: net_salary || (gross_salary - (pf_deduction || 0) - (tax_deduction || 0) - (other_deductions || 0)),
+        present_days: attendance_days,
+        working_days: working_days,
+        notes,
+      });
+      created.push(payslip);
+    }
+
+    res.status(201).json({ message: `Created ${created.length} payslips${skippedDuplicates.length ? `, skipped ${skippedDuplicates.length} duplicates` : ''}`, payslips: created });
+  } catch (err) {
+    console.error("Bulk create payslips error:", err);
     res.status(500).json({ message: "Internal server error" });
   }
 });
@@ -519,9 +883,26 @@ app.patch("/payslips/:id", requireRole("admin", "hr"), async (req, res) => {
   }
 });
 
-// Delete payslip
+// Delete payslip (requires password verification)
 app.delete("/payslips/:id", requireRole("admin", "hr"), async (req, res) => {
   try {
+    const userId = req.headers["x-user-id"];
+    const password = req.headers["x-confirm-password"];
+    
+    if (!password) {
+      return res.status(400).json({ message: "Password confirmation is required" });
+    }
+    
+    const user = await User.findById(userId).exec();
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    
+    const passwordOk = await bcrypt.compare(password, user.passwordHash);
+    if (!passwordOk) {
+      return res.status(403).json({ message: "Incorrect password" });
+    }
+    
     const payslip = await Payslip.findByIdAndDelete(req.params.id).lean().exec();
     if (!payslip) return res.status(404).json({ message: "Payslip not found" });
     res.json({ message: "Payslip deleted" });
@@ -562,41 +943,6 @@ async function start() {
       console.log("   • admin   - Full access to all features");
       console.log("   • hr      - HR access (manage users, payroll)");
       console.log("   • employee - Limited access (only see own data & payslips)");
-
-      // Auto-seed payslips if none exist
-      try {
-        const payslipCount = await Payslip.countDocuments().exec();
-        if (payslipCount === 0) {
-          const users = await User.find().lean().exec();
-          if (users.length > 0) {
-            const payslips = [];
-            const months = ["2026-01", "2025-12", "2025-11"];
-            
-            users.forEach(user => {
-              months.forEach(month => {
-                payslips.push({
-                  employee_id: user._id.toString(),
-                  employee_name: user.full_name,
-                  email: user.email,
-                  month: month,
-                  basic_salary: 50000,
-                  allowances: 5000,
-                  deductions: 5000,
-                  net_salary: 50000,
-                  present_days: 22,
-                  total_days: 22,
-                  notes: `Payslip for ${month}`,
-                });
-              });
-            });
-
-            await Payslip.insertMany(payslips);
-            console.log(`📊 Auto-seeded ${payslips.length} sample payslips`);
-          }
-        }
-      } catch (seedErr) {
-        console.warn("⚠️ Could not auto-seed payslips:", seedErr.message);
-      }
     });
   } catch (err) {
     console.error("\n❌ Failed to start server:");

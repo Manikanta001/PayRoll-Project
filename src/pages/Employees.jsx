@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { useAuth } from '@/lib/AuthContext';
 import RequireElevated from '@/components/RequireElevated';
+import { Label } from "@/components/ui/label";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,6 +43,8 @@ export default function Employees() {
   const [showForm, setShowForm] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState(null);
   const [deleteEmployee, setDeleteEmployee] = useState(null);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteError, setDeleteError] = useState('');
   const [viewEmployee, setViewEmployee] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('All');
@@ -77,11 +80,17 @@ export default function Employees() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Employee.delete(id),
+    mutationFn: ({ id, password }) => base44.entities.Employee.delete(id, password),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employees'] });
       setDeleteEmployee(null);
+      setDeletePassword('');
+      setDeleteError('');
       toast.success('Employee deleted successfully');
+    },
+    onError: (error) => {
+      const msg = error.response?.data?.message || 'Failed to delete employee';
+      setDeleteError(msg);
     },
   });
 
@@ -254,22 +263,43 @@ export default function Employees() {
         isLoading={createMutation.isPending || updateMutation.isPending}
       />
 
-      {/* Delete Confirmation */}
-      <AlertDialog open={!!deleteEmployee} onOpenChange={() => setDeleteEmployee(null)}>
+      {/* Delete Confirmation with Password */}
+      <AlertDialog open={!!deleteEmployee} onOpenChange={(open) => { if (!open) { setDeleteEmployee(null); setDeletePassword(''); setDeleteError(''); } }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Employee</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete {deleteEmployee?.name}? This action cannot be undone.
+              Are you sure you want to delete {deleteEmployee?.name}? This will also remove all their payslips and attendance records. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="space-y-2 py-2">
+            <Label htmlFor="delete-password">Enter your password to confirm</Label>
+            <Input
+              id="delete-password"
+              type="password"
+              placeholder="Your password"
+              value={deletePassword}
+              onChange={(e) => { setDeletePassword(e.target.value); setDeleteError(''); }}
+            />
+            {deleteError && (
+              <p className="text-sm text-red-500">{deleteError}</p>
+            )}
+          </div>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => { setDeletePassword(''); setDeleteError(''); }}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => deleteMutation.mutate(deleteEmployee.id)}
+              onClick={(e) => {
+                e.preventDefault();
+                if (!deletePassword) {
+                  setDeleteError('Password is required');
+                  return;
+                }
+                deleteMutation.mutate({ id: deleteEmployee.id, password: deletePassword });
+              }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteMutation.isPending}
             >
-              Delete
+              {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -69,6 +69,7 @@ export default function ProcessPayrollModal({
       return {
         employee_id: empId,
         employee_name: employee.name,
+        email: employee.email,
         department: employee.department,
         basic_salary: proRatedBasic,
         hra,

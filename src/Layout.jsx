@@ -21,6 +21,9 @@ import {
   Bell,
   Search,
   LogIn,
+  UserPlus,
+  CreditCard,
+  ClipboardCheck,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -30,7 +33,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const navigation = [
   { name: 'Dashboard', href: 'Dashboard', icon: LayoutDashboard },
@@ -49,15 +58,75 @@ const adminNavigation = [
 export default function Layout({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState(null);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const navigate = useNavigate();
 
   useEffect(() => {
     loadUser();
   }, []);
 
+  useEffect(() => {
+    if (user) {
+      loadNotifications();
+    }
+  }, [user]);
+
   const loadUser = async () => {
     const userData = await base44.auth.me();
     setUser(userData);
+  };
+
+  const loadNotifications = async () => {
+    try {
+      const isHROrAdmin = user?.role === 'admin' || user?.role === 'hr';
+      const items = [];
+
+      // Fetch recent payslips for notifications
+      const payslips = await base44.entities.Payslip.list();
+      if (payslips.length > 0) {
+        const recent = payslips.slice(0, 3);
+        recent.forEach(p => {
+          items.push({
+            id: p._id || p.id,
+            icon: CreditCard,
+            title: isHROrAdmin ? `Payslip generated for ${p.employee_name}` : 'Your payslip is ready',
+            subtitle: p.month ? `${p.month}` : '',
+            time: p.created_date ? new Date(p.created_date).toLocaleDateString() : 'Recently',
+            read: false,
+          });
+        });
+      }
+
+      if (isHROrAdmin) {
+        // Fetch recent employees
+        const employees = await base44.entities.Employee.list();
+        if (employees.length > 0) {
+          const recent = employees.slice(0, 2);
+          recent.forEach(e => {
+            items.push({
+              id: 'emp-' + (e.id || e._id),
+              icon: UserPlus,
+              title: `${e.name} added as employee`,
+              subtitle: e.department || '',
+              time: e.created_date ? new Date(e.created_date).toLocaleDateString() : 'Recently',
+              read: false,
+            });
+          });
+        }
+      }
+
+      // Sort by time, most recent first
+      setNotifications(items);
+      setUnreadCount(items.length);
+    } catch (err) {
+      console.error('Error loading notifications:', err);
+    }
+  };
+
+  const markAllRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    setUnreadCount(0);
   };
 
   const handleLogout = () => {
@@ -170,10 +239,55 @@ export default function Layout({ children, currentPageName }) {
             </div>
 
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="h-5 w-5" />
-                <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full" />
-              </Button>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="icon" className="relative">
+                    <Bell className="h-5 w-5" />
+                    {unreadCount > 0 && (
+                      <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full" />
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-80 p-0">
+                  <div className="flex items-center justify-between px-4 py-3 border-b">
+                    <h4 className="font-semibold text-sm">Notifications</h4>
+                    {unreadCount > 0 && (
+                      <Button variant="ghost" size="sm" className="text-xs h-7" onClick={markAllRead}>
+                        Mark all read
+                      </Button>
+                    )}
+                  </div>
+                  <ScrollArea className="max-h-80">
+                    {notifications.length === 0 ? (
+                      <div className="p-6 text-center text-muted-foreground text-sm">
+                        <Bell className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                        No notifications
+                      </div>
+                    ) : (
+                      <div className="divide-y">
+                        {notifications.map((n) => (
+                          <div
+                            key={n.id}
+                            className={cn(
+                              "flex items-start gap-3 px-4 py-3 hover:bg-muted/50 transition-colors",
+                              !n.read && "bg-primary/5"
+                            )}
+                          >
+                            <div className="p-2 rounded-full bg-primary/10 mt-0.5">
+                              <n.icon className="h-4 w-4 text-primary" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className={cn("text-sm", !n.read && "font-medium")}>{n.title}</p>
+                              {n.subtitle && <p className="text-xs text-muted-foreground">{n.subtitle}</p>}
+                              <p className="text-xs text-muted-foreground mt-1">{n.time}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </ScrollArea>
+                </PopoverContent>
+              </Popover>
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

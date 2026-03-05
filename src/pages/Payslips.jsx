@@ -1,35 +1,98 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Download, Mail, FileText, Calendar } from "lucide-react";
+import { Search, Download, Mail, FileText, Calendar, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import PayslipModal from '@/components/payroll/PayslipModal';
 import { toast } from "sonner";
 import { format, subMonths } from 'date-fns';
+import { useAuth } from '@/lib/AuthContext';
+import { Label } from "@/components/ui/label";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function Payslips() {
+  const { user } = useAuth();
+  const canManagePayslips = user?.role === 'admin' || user?.role === 'hr';
+  
   const [searchQuery, setSearchQuery] = useState('');
-  const [monthFilter, setMonthFilter] = useState('');
+  const [monthFilter, setMonthFilter] = useState('all');
   const [viewPayslip, setViewPayslip] = useState(null);
+  const [deletePayslip, setDeletePayslip] = useState(null);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteError, setDeleteError] = useState('');
+
+  const queryClient = useQueryClient();
 
   const { data: employees = [], isLoading: loadingEmployees, error: employeesError } = useQuery({
     queryKey: ['employees'],
     queryFn: () => base44.entities.Employee.list(),
     staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: false,
   });
 
   const { data: payslips = [], isLoading: loadingPayslips, error: payslipsError } = useQuery({
     queryKey: ['payslips'],
     queryFn: () => base44.entities.Payslip.list(),
     staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: false,
   });
 
+  // DEBUG: Log what we're receiving
+  React.useEffect(() => {
+    console.log('📋 Payslips Component Debug:', {
+      payslips: payslips.length,
+      employees: employees.length,
+      isLoading: loadingPayslips || loadingEmployees,
+      payslipsError: payslipsError?.message,
+      employeesError: employeesError?.message,
+      payslipsData: payslips,
+    });
+  }, [payslips, employees, loadingPayslips, loadingEmployees, payslipsError, employeesError]);
+
+  // Debug logging
+  React.useEffect(() => {
+    console.log("📋 Payslips Component Debug:", {
+      loadingEmployees,
+      employeesError: employeesError?.message,
+      employees: employees.length,
+      loadingPayslips,
+      payslipsError: payslipsError?.message,
+      payslips: payslips.length,
+      isLoading: loadingEmployees || loadingPayslips,
+    });
+  }, [loadingEmployees, employeesError, employees, loadingPayslips, payslipsError, payslips]);
+
   const isLoading = loadingEmployees || loadingPayslips;
+
+  const deletePayslipMutation = useMutation({
+    mutationFn: ({ id, password }) => base44.entities.Payslip.delete(id, password),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payslips'] });
+      queryClient.invalidateQueries({ queryKey: ['salaries'] });
+      setDeletePayslip(null);
+      setDeletePassword('');
+      setDeleteError('');
+      toast.success('Payslip deleted successfully');
+    },
+    onError: (error) => {
+      const msg = error.response?.data?.message || 'Failed to delete payslip';
+      setDeleteError(msg);
+    },
+  });
 
   // Generate month options
   const monthOptions = [];
@@ -46,7 +109,7 @@ export default function Payslips() {
       record.employee_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       record.employee_id?.toLowerCase().includes(searchQuery.toLowerCase());
     
-    const matchesMonth = !monthFilter || record.month === monthFilter;
+    const matchesMonth = monthFilter === 'all' || record.month === monthFilter;
     
     return matchesSearch && matchesMonth;
   });
@@ -158,18 +221,20 @@ PayRoll Pro Team
     );
   }
 
-  if (payslipsError) {
+  // Show errors clearly
+  if (payslipsError || employeesError) {
     return (
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold">Payslips</h1>
         </div>
         <Card className="py-12">
-          <CardContent className="text-center text-red-600">
-            <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p className="font-semibold">Error loading payslips</p>
-            <p className="text-sm mt-2">{payslipsError?.message || 'Failed to fetch payslips from server'}</p>
-            <p className="text-xs mt-4 text-muted-foreground">Check console for more details or verify the API is running</p>
+          <CardContent className="text-center">
+            <FileText className="h-12 w-12 mx-auto mb-4 opacity-50 text-red-600" />
+            <p className="font-semibold text-red-600">Error loading data</p>
+            {payslipsError && <p className="text-sm mt-2 text-red-500">Payslips Error: {payslipsError?.message || 'Failed to fetch payslips'}</p>}
+            {employeesError && <p className="text-sm mt-2 text-red-500">Employees Error: {employeesError?.message || 'Failed to fetch employees'}</p>}
+            <p className="text-xs mt-4 text-muted-foreground">Check the browser console for more details</p>
           </CardContent>
         </Card>
       </div>
@@ -207,7 +272,7 @@ PayRoll Pro Team
             <SelectValue placeholder="All months" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All months</SelectItem>
+            <SelectItem value="all">All months</SelectItem>
             {monthOptions.map(opt => (
               <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
             ))}
@@ -278,6 +343,16 @@ PayRoll Pro Team
                   >
                     <Mail className="h-4 w-4" />
                   </Button>
+                  {canManagePayslips && (
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                      onClick={() => setDeletePayslip(payslip)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -285,12 +360,16 @@ PayRoll Pro Team
         ))}
       </div>
 
-      {filteredRecords.length === 0 && (
+      {filteredRecords.length === 0 && !isLoading && (
         <Card className="py-12">
           <CardContent className="text-center text-muted-foreground">
             <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>No payslips found</p>
-            <p className="text-sm">Process payroll to generate payslips</p>
+            <p className="font-semibold">No payslips found</p>
+            <p className="text-sm">
+              {payslips.length === 0 
+                ? "No payslips have been generated yet. Go to the Payroll page and click 'Process Payroll' to generate payslips for employees."
+                : "No payslips match your filters. Try adjusting the search or month filter."}
+            </p>
           </CardContent>
         </Card>
       )}
@@ -304,6 +383,48 @@ PayRoll Pro Team
         onDownload={handleDownloadPayslip}
         onEmail={handleEmailPayslip}
       />
+
+      {/* Delete Payslip Confirmation with Password */}
+      <AlertDialog open={!!deletePayslip} onOpenChange={(open) => { if (!open) { setDeletePayslip(null); setDeletePassword(''); setDeleteError(''); } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Payslip</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the payslip for {deletePayslip?.employee_name} ({deletePayslip?.month ? format(new Date(deletePayslip.month + '-01'), 'MMMM yyyy') : ''})? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2 py-2">
+            <Label htmlFor="delete-payslip-password">Enter your password to confirm</Label>
+            <Input
+              id="delete-payslip-password"
+              type="password"
+              placeholder="Your password"
+              value={deletePassword}
+              onChange={(e) => { setDeletePassword(e.target.value); setDeleteError(''); }}
+            />
+            {deleteError && (
+              <p className="text-sm text-red-500">{deleteError}</p>
+            )}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setDeletePassword(''); setDeleteError(''); }}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                if (!deletePassword) {
+                  setDeleteError('Password is required');
+                  return;
+                }
+                deletePayslipMutation.mutate({ id: deletePayslip._id, password: deletePassword });
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deletePayslipMutation.isPending}
+            >
+              {deletePayslipMutation.isPending ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
