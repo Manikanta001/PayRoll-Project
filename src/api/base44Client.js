@@ -3,7 +3,7 @@ import axios from "axios";
 const STORAGE_PREFIX = "local_base44_mock_v1:";
 
 // API base: in production (Vercel) use relative /api path, in dev use localhost:4000
-const API_BASE = (import.meta?.env?.VITE_API_BASE) || (import.meta?.env?.PROD ? "/api" : "http://localhost:4000");
+const API_BASE = import.meta.env.VITE_API_BASE || (import.meta.env.PROD ? "/api" : "http://localhost:4000");
 
 function safeParseJson(raw, fallback) {
   try {
