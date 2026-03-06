@@ -1,8 +1,12 @@
 // Vercel Serverless Function wrapper for the Express backend
+import dns from "node:dns";
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
 import bcrypt from "bcryptjs";
+
+// Use public DNS servers to resolve MongoDB Atlas SRV records reliably
+dns.setServers(["8.8.8.8", "8.8.4.4", "1.1.1.1"]);
 
 // --- Environment ---
 const MONGO_URI = process.env.MONGO_URI;
@@ -624,7 +628,27 @@ app.post(
         });
       }
 
-      const payslips = await Payslip.insertMany(toCreate);
+      const mapped = toCreate.map((item) => ({
+        employee_id: item.employee_id,
+        employee_name: item.employee_name,
+        email: item.email || '',
+        department: item.department || '',
+        month: item.month,
+        basic_salary: item.basic_salary,
+        hra: item.hra || 0,
+        da: item.da || 0,
+        allowances: item.other_allowances || 0,
+        gross_salary: item.gross_salary || 0,
+        pf_deduction: item.pf_deduction || 0,
+        tax_deduction: item.tax_deduction || 0,
+        deductions: (item.pf_deduction || 0) + (item.tax_deduction || 0) + (item.other_deductions || 0),
+        net_salary: item.net_salary || 0,
+        present_days: item.attendance_days || item.present_days,
+        working_days: item.working_days,
+        status: item.status || 'Processed',
+        notes: item.notes,
+      }));
+      const payslips = await Payslip.insertMany(mapped);
 
       res.status(201).json({
         payslips,
@@ -703,9 +727,19 @@ app.delete(
 
 // --- Salary routes (return payslip data in salary format) ---
 
-app.get("/api/salaries", requireRole("admin", "hr"), async (req, res) => {
+app.get("/api/salaries", async (req, res) => {
   try {
-    const payslips = await Payslip.find().sort({ created_date: -1 }).lean().exec();
+    const userRole = req.headers["x-user-role"];
+    const userId = req.headers["x-user-id"];
+
+    let query;
+    if (userRole === "employee") {
+      query = Payslip.find({ employee_id: userId });
+    } else {
+      query = Payslip.find();
+    }
+
+    const payslips = await query.sort({ created_date: -1 }).lean().exec();
     const mapped = payslips.map((p) => ({
       id: p._id.toString(),
       employee_id: p.employee_id,

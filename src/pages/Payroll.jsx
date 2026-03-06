@@ -54,6 +54,11 @@ export default function Payroll() {
       setShowProcessModal(false);
       toast.success('Payroll processed successfully');
     },
+    onError: (error) => {
+      console.error('Payroll processing error:', error);
+      const msg = error?.response?.data?.message || error?.message || 'Failed to process payroll';
+      toast.error(msg);
+    },
   });
 
   const updateStatusMutation = useMutation({

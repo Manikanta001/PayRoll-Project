@@ -1,3 +1,4 @@
+import dns from "node:dns";
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
@@ -5,6 +6,9 @@ import bcrypt from "bcryptjs";
 import dotenv from "dotenv";
 
 dotenv.config();
+
+// Use public DNS servers to resolve MongoDB Atlas SRV records reliably
+dns.setServers(["8.8.8.8", "8.8.4.4", "1.1.1.1"]);
 
 // Support both local and cloud MongoDB with fallback
 const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/payroll";
