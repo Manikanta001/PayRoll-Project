@@ -117,7 +117,7 @@ const payslipSchema = new mongoose.Schema(
     working_days: { type: Number },
     status: {
       type: String,
-      enum: ["Generated", "Paid", "Pending"],
+      enum: ["Generated", "Processed", "Paid", "Pending"],
       default: "Generated",
     },
     notes: { type: String },
@@ -722,6 +722,7 @@ app.get("/api/salaries", async (req, res) => {
       id: p._id.toString(),
       employee_id: p.employee_id,
       employee_name: p.employee_name,
+      department: p.department || '',
       month: p.month,
       basic_salary: p.basic_salary,
       hra: p.hra || 0,
@@ -730,8 +731,11 @@ app.get("/api/salaries", async (req, res) => {
       gross_salary: p.gross_salary,
       pf_deduction: p.pf_deduction || 0,
       tax_deduction: p.tax_deduction || 0,
+      total_deductions: (p.pf_deduction || 0) + (p.tax_deduction || 0),
       deductions: p.deductions || 0,
       net_salary: p.net_salary,
+      working_days: p.working_days,
+      attendance_days: p.present_days,
       status: p.status || "Generated",
       created_date: p.created_date,
     }));
