@@ -11,7 +11,6 @@ export default function AttendanceTable({ records, onEdit, onDelete, onMarkDay }
   const canMarkAttendance = user?.role === 'admin' || user?.role === 'hr';
   const [expandedRow, setExpandedRow] = useState(null);
 
-  // Helper function to get days in month
   const getDaysInMonth = (monthStr) => {
     const [year, month] = monthStr.split('-');
     return new Date(year, month, 0).getDate();
@@ -45,7 +44,6 @@ export default function AttendanceTable({ records, onEdit, onDelete, onMarkDay }
                 ? Math.round((record.present_days / record.working_days) * 100) 
                 : 0;
               
-              // Parse attendance_days JSON if available
               const attendanceDays = record.attendance_days || {};
               const daysInMonth = getDaysInMonth(record.month);
               
@@ -87,7 +85,6 @@ export default function AttendanceTable({ records, onEdit, onDelete, onMarkDay }
                     )}
                   </TableRow>
                   
-                  {/* Day-by-day attendance for HR/Admin */}
                   {canMarkAttendance && expandedRow === record.id && (
                     <TableRow className="bg-muted/50">
                       <TableCell colSpan={canMarkAttendance ? 7 : 6} className="p-4">

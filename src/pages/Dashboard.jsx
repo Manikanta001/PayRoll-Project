@@ -27,7 +27,6 @@ export default function Dashboard() {
 
   const isLoading = loadingEmployees || loadingSalaries || loadingAttendance;
 
-  // Calculate stats
   const activeEmployees = employees.filter(e => e.status === 'Active' || !e.status).length;
   const totalEmployees = employees.length;
   
@@ -55,7 +54,6 @@ export default function Dashboard() {
       }, 0) / currentAttendance.length)
     : 100;
 
-  // Department distribution
   const departmentData = employees.reduce((acc, emp) => {
     const dept = emp.department || 'Other';
     const existing = acc.find(d => d.name === dept);
@@ -68,7 +66,6 @@ export default function Dashboard() {
     return acc;
   }, []);
 
-  // Monthly salary trend (last 6 months)
   const monthlyData = [];
   for (let i = 5; i >= 0; i--) {
     const month = format(subMonths(new Date(), i), 'yyyy-MM');
@@ -81,7 +78,6 @@ export default function Dashboard() {
     });
   }
 
-  // Recent salary records
   const recentSalaries = [...salaryRecords]
     .sort((a, b) => new Date(b.created_date) - new Date(a.created_date))
     .slice(0, 5);
@@ -108,13 +104,11 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-2xl md:text-3xl font-bold">Dashboard</h1>
         <p className="text-muted-foreground">Welcome back! Here's your payroll overview.</p>
       </div>
 
-      {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Total Employees"
@@ -152,15 +146,12 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <SalaryChart data={monthlyData} title="Monthly Payroll Trend" />
         <DepartmentChart data={departmentData} title="Salary by Department" />
       </div>
 
-      {/* Recent Activity & Quick Stats */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Department Summary */}
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="text-lg">Department Summary</CardTitle>
@@ -188,7 +179,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Quick Actions */}
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Quick Stats</CardTitle>

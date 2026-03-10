@@ -7,10 +7,8 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-// Use public DNS servers to resolve MongoDB Atlas SRV records reliably
 dns.setServers(["8.8.8.8", "8.8.4.4", "1.1.1.1"]);
 
-// Support both local and cloud MongoDB with fallback
 const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/payroll";
 const PORT = process.env.PORT || 4000;
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
@@ -25,14 +23,12 @@ const allowedOrigins = [
 
 const app = express();
 
-// Enable CORS for frontend (local development or production deployment)
 const corsOptions = {
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
     const msg = `CORS error: origin ${origin} is not allowed`;
-    console.warn(msg);
     return callback(new Error(msg), false);
   },
   credentials: false,
@@ -41,13 +37,10 @@ const corsOptions = {
 };
 
 if (NODE_ENV === "production") {
-  console.log(`🔐 CORS enabled for: ${FRONTEND_URL}`);
 }
 
 app.use(cors(corsOptions));
 app.use(express.json());
-
-// --- Mongoose models ---
 
 const userSchema = new mongoose.Schema(
   {
@@ -71,7 +64,6 @@ const userSchema = new mongoose.Schema(
 
 const User = mongoose.model("User", userSchema);
 
-// Attendance Schema - Store attendance records for each day
 const attendanceSchema = new mongoose.Schema(
   {
     employee_id: { type: String, required: true },
@@ -85,7 +77,6 @@ const attendanceSchema = new mongoose.Schema(
 
 const Attendance = mongoose.model("Attendance", attendanceSchema);
 
-// Payslip Schema - Store payslips for employees
 const payslipSchema = new mongoose.Schema(
   {
     employee_id: { type: String, required: true },
@@ -111,8 +102,6 @@ const payslipSchema = new mongoose.Schema(
 
 const Payslip = mongoose.model("Payslip", payslipSchema);
 
-// --- Auth routes ---
-
 app.post("/auth/register", async (req, res) => {
   try {
     const { full_name, email, password, role } = req.body || {};
@@ -122,13 +111,11 @@ app.post("/auth/register", async (req, res) => {
     
     const emailLower = email.toLowerCase();
     
-    // For employee role: only allow registration if HR has already added this email as an employee
     if (!role || role === "employee") {
       const employeeRecord = await User.findOne({ email: emailLower, is_employee: true }).exec();
       if (!employeeRecord) {
         return res.status(403).json({ message: "This email is not registered as an employee. Please contact HR to add you first." });
       }
-      // Employee record exists (created by HR) - update password so they can set a custom one
       employeeRecord.passwordHash = await bcrypt.hash(password, 10);
       employeeRecord.full_name = full_name;
       await employeeRecord.save();
@@ -137,13 +124,11 @@ app.post("/auth/register", async (req, res) => {
       return res.status(201).json(plain);
     }
     
-    // Check if already registered (for HR/Admin roles)
     const existing = await User.findOne({ email: emailLower }).exec();
     if (existing) {
       return res.status(409).json({ message: "Email already registered" });
     }
     
-    // For HR/Admin roles: create new user directly (protected by role password on frontend)
     const passwordHash = await bcrypt.hash(password, 10);
     const user = await User.create({
       full_name,
@@ -217,7 +202,6 @@ app.post("/auth/verify-password", async (req, res) => {
   }
 });
 
-// --- MIDDLEWARE: Check if user has required role ---
 function requireRole(...allowedRoles) {
   return (req, _res, next) => {
     const userRole = req.headers["x-user-role"];
@@ -227,8 +211,6 @@ function requireRole(...allowedRoles) {
     next();
   };
 }
-
-// --- User management routes ---
 
 app.get("/users", requireRole("admin", "hr"), async (_req, res) => {
   try {
@@ -247,7 +229,6 @@ app.get("/users/:id", async (req, res) => {
     const userId = req.headers["x-user-id"];
     const requestedId = req.params.id;
     
-    // Employee can only see their own data
     if (userRole === "employee" && userId !== requestedId) {
       return res.status(403).json({ message: "You can only access your own data" });
     }
@@ -262,7 +243,6 @@ app.get("/users/:id", async (req, res) => {
   }
 });
 
-// Only HR and Admin can edit users
 app.patch("/users/:id", requireRole("admin", "hr"), async (req, res) => {
   try {
     const updates = { ...req.body };
@@ -282,7 +262,6 @@ app.patch("/users/:id", requireRole("admin", "hr"), async (req, res) => {
   }
 });
 
-// Only HR and Admin can delete users
 app.delete("/users/:id", requireRole("admin", "hr"), async (req, res) => {
   try {
     const user = await User.findByIdAndDelete(req.params.id).lean().exec();
@@ -323,9 +302,6 @@ app.post("/users/invite", async (req, res) => {
   }
 });
 
-// --- EMPLOYEE ROUTES ---
-
-// Create new employee
 app.post("/employees", requireRole("admin", "hr"), async (req, res) => {
   try {
     const { name, email, phone, department, designation, basic_salary, joining_date, status, bank_account, pan_number, address } = req.body;
@@ -334,17 +310,14 @@ app.post("/employees", requireRole("admin", "hr"), async (req, res) => {
       return res.status(400).json({ message: "name and email are required" });
     }
 
-    // Check if user already exists
     const existing = await User.findOne({ email: email.toLowerCase() }).exec();
     if (existing) {
       return res.status(400).json({ message: "Employee with this email already exists" });
     }
 
-    // Default password: name + 9878 (e.g. "Ajay9878")
     const defaultPassword = name.trim().split(' ')[0] + '9878';
     const passwordHash = await bcrypt.hash(defaultPassword, 10);
 
-    // Create new user with employee details
     const user = await User.create({
       full_name: name,
       email: email.toLowerCase(),
@@ -362,7 +335,6 @@ app.post("/employees", requireRole("admin", "hr"), async (req, res) => {
       address,
     });
 
-    // Convert to employee format
     const employees = await User.find({ is_employee: true }).lean().exec();
     const empIndex = employees.findIndex(u => u._id.toString() === user._id.toString());
     
@@ -386,11 +358,9 @@ app.post("/employees", requireRole("admin", "hr"), async (req, res) => {
   }
 });
 
-// Get all employees (only users explicitly added as employees by HR)
 app.get("/employees", async (req, res) => {
   try {
     const users = await User.find({ is_employee: true }).lean().exec();
-    // Convert users to employees format
     const employees = users.map((u, idx) => ({
       id: u._id.toString(),
       emp_id: `EMP${String(idx + 1).padStart(4, '0')}`,
@@ -410,7 +380,6 @@ app.get("/employees", async (req, res) => {
   }
 });
 
-// Delete employee (requires password verification)
 app.delete("/employees/:id", requireRole("admin", "hr"), async (req, res) => {
   try {
     const userId = req.headers["x-user-id"];
@@ -433,7 +402,6 @@ app.delete("/employees/:id", requireRole("admin", "hr"), async (req, res) => {
     const user = await User.findByIdAndDelete(req.params.id).lean().exec();
     if (!user) return res.status(404).json({ message: "Employee not found" });
     
-    // Also delete their payslips and attendance records
     await Payslip.deleteMany({ employee_id: req.params.id });
     await Attendance.deleteMany({ employee_id: req.params.id });
     
@@ -444,9 +412,6 @@ app.delete("/employees/:id", requireRole("admin", "hr"), async (req, res) => {
   }
 });
 
-// --- ATTENDANCE ROUTES ---
-
-// Get all attendance records
 app.get("/attendance", async (_req, res) => {
   try {
     const records = await Attendance.find().sort({ date: -1 }).lean().exec();
@@ -457,7 +422,6 @@ app.get("/attendance", async (_req, res) => {
   }
 });
 
-// Get attendance for a specific employee
 app.get("/attendance/:employeeId", async (req, res) => {
   try {
     const records = await Attendance.find({ employee_id: req.params.employeeId })
@@ -471,7 +435,6 @@ app.get("/attendance/:employeeId", async (req, res) => {
   }
 });
 
-// Mark attendance for multiple employees on a single day
 app.post("/attendance/mark-day", requireRole("admin", "hr"), async (req, res) => {
   try {
     const { date, attendanceRecords } = req.body; // attendanceRecords: [{ employee_id, employee_name, status }, ...]
@@ -485,7 +448,6 @@ app.post("/attendance/mark-day", requireRole("admin", "hr"), async (req, res) =>
     for (const record of attendanceRecords) {
       const { employee_id, employee_name, status } = record;
       
-      // Find or create attendance record for this date
       const existing = await Attendance.findOne({
         employee_id,
         date: {
@@ -496,11 +458,9 @@ app.post("/attendance/mark-day", requireRole("admin", "hr"), async (req, res) =>
 
       let result;
       if (existing) {
-        // Update existing record
         existing.status = status;
         result = await existing.save();
       } else {
-        // Create new record
         result = await Attendance.create({
           employee_id,
           employee_name,
@@ -518,7 +478,6 @@ app.post("/attendance/mark-day", requireRole("admin", "hr"), async (req, res) =>
   }
 });
 
-// Create single attendance record
 app.post("/attendance", requireRole("admin", "hr"), async (req, res) => {
   try {
     const { employee_id, employee_name, date, status, notes } = req.body;
@@ -540,7 +499,6 @@ app.post("/attendance", requireRole("admin", "hr"), async (req, res) => {
   }
 });
 
-// Update attendance record
 app.patch("/attendance/:id", requireRole("admin", "hr"), async (req, res) => {
   try {
     const record = await Attendance.findByIdAndUpdate(req.params.id, req.body, {
@@ -556,7 +514,6 @@ app.patch("/attendance/:id", requireRole("admin", "hr"), async (req, res) => {
   }
 });
 
-// Delete attendance record
 app.delete("/attendance/:id", requireRole("admin", "hr"), async (req, res) => {
   try {
     const record = await Attendance.findByIdAndDelete(req.params.id).lean().exec();
@@ -568,21 +525,16 @@ app.delete("/attendance/:id", requireRole("admin", "hr"), async (req, res) => {
   }
 });
 
-// --- SEED DATA ENDPOINT ---
-
 app.post("/seed-payslips", async (_req, res) => {
   try {
-    // Clear existing payslips
     await Payslip.deleteMany({});
 
-    // Get all users to use as employees
     const users = await User.find().lean().exec();
     
     if (users.length === 0) {
       return res.status(400).json({ message: "No users found. Create users first." });
     }
 
-    // Create sample payslips for each user for the last 3 months
     const payslips = [];
     const months = ["2026-01", "2025-12", "2025-11"];
     
@@ -612,21 +564,17 @@ app.post("/seed-payslips", async (_req, res) => {
   }
 });
 
-// Reset all data (for development/testing only)
 app.post("/reset-data", async (req, res) => {
   try {
     const password = req.body?.password;
-    // Simple password protection for dev endpoint
     if (password !== "reset123") {
       return res.status(403).json({ message: "Invalid password" });
     }
 
-    console.log("🔄 Resetting all data...");
     await User.deleteMany({});
     await Payslip.deleteMany({});
     await Attendance.deleteMany({});
     
-    // Recreate sample data
     const passwordHash = await bcrypt.hash("password123", 10);
     const sampleUsers = [
       { full_name: 'Vivek Sharma', email: 'vivek.sharma@company.com', role: 'employee' },
@@ -641,7 +589,6 @@ app.post("/reset-data", async (req, res) => {
       )
     );
 
-    // Create detailed payslips
     const payslips = [];
     const months = ["2026-01", "2025-12", "2025-11"];
     
@@ -688,9 +635,6 @@ app.post("/reset-data", async (req, res) => {
   }
 });
 
-// --- PAYSLIP ROUTES ---
-
-// Get all salary records (mapped from payslips)
 app.get("/salaries", async (req, res) => {
   try {
     const userRole = req.headers["x-user-role"];
@@ -705,7 +649,6 @@ app.get("/salaries", async (req, res) => {
     
     const payslips = await query.sort({ month: -1 }).lean().exec();
     
-    // Map to salary record format expected by frontend
     const salaryRecords = payslips.map(p => ({
       id: p._id.toString(),
       employee_id: p.employee_id,
@@ -733,17 +676,14 @@ app.get("/salaries", async (req, res) => {
   }
 });
 
-// Create salary record
 app.post("/salaries", requireRole("admin", "hr"), async (req, res) => {
   try {
-    // For now just return success to satisfy the frontend
     res.status(201).json({ success: true });
   } catch (err) {
     res.status(500).json({ message: "Internal server error" });
   }
 });
 
-// Update salary record status
 app.patch("/salaries/:id", requireRole("admin", "hr"), async (req, res) => {
   try {
     res.json({ success: true });
@@ -752,7 +692,6 @@ app.patch("/salaries/:id", requireRole("admin", "hr"), async (req, res) => {
   }
 });
 
-// Get all payslips
 app.get("/payslips", async (req, res) => {
   try {
     const userRole = req.headers["x-user-role"];
@@ -760,10 +699,8 @@ app.get("/payslips", async (req, res) => {
     
     let query;
     if (userRole === "employee") {
-      // Employees can only see their own payslips
       query = Payslip.find({ employee_id: userId });
     } else {
-      // Admin and HR can see all payslips
       query = Payslip.find();
     }
 
@@ -775,7 +712,6 @@ app.get("/payslips", async (req, res) => {
   }
 });
 
-// Bulk create payslips
 app.post("/payslips/bulk-create", requireRole("admin", "hr"), async (req, res) => {
   try {
     const payslips = req.body;
@@ -789,14 +725,11 @@ app.post("/payslips/bulk-create", requireRole("admin", "hr"), async (req, res) =
       const { employee_id, employee_name, email, department, month, basic_salary, hra, da, gross_salary, pf_deduction, tax_deduction, total_deductions, net_salary, working_days, attendance_days, other_allowances, other_deductions, notes } = data;
       
       if (!employee_id || !employee_name || !month) {
-        console.warn("Skipping payslip - missing required fields:", data);
         continue;
       }
 
-      // Check for duplicate - skip if payslip already exists for this employee+month
       const existing = await Payslip.findOne({ employee_id, month }).exec();
       if (existing) {
-        console.log(`Skipping duplicate payslip for ${employee_name} (${month})`);
         skippedDuplicates.push(employee_name);
         continue;
       }
@@ -830,7 +763,6 @@ app.post("/payslips/bulk-create", requireRole("admin", "hr"), async (req, res) =
   }
 });
 
-// Create payslip
 app.post("/payslips", requireRole("admin", "hr"), async (req, res) => {
   try {
     const { employee_id, employee_name, email, month, basic_salary, allowances, deductions, present_days, total_days, notes } = req.body;
@@ -860,12 +792,10 @@ app.post("/payslips", requireRole("admin", "hr"), async (req, res) => {
   }
 });
 
-// Update payslip
 app.patch("/payslips/:id", requireRole("admin", "hr"), async (req, res) => {
   try {
     const updates = { ...req.body };
     
-    // Recalculate net salary if any salary component changed
     if (updates.basic_salary !== undefined || updates.allowances !== undefined || updates.deductions !== undefined) {
       const payslip = await Payslip.findById(req.params.id).exec();
       const basic = updates.basic_salary !== undefined ? updates.basic_salary : payslip.basic_salary;
@@ -887,7 +817,6 @@ app.patch("/payslips/:id", requireRole("admin", "hr"), async (req, res) => {
   }
 });
 
-// Delete payslip (requires password verification)
 app.delete("/payslips/:id", requireRole("admin", "hr"), async (req, res) => {
   try {
     const userId = req.headers["x-user-id"];
@@ -916,37 +845,15 @@ app.delete("/payslips/:id", requireRole("admin", "hr"), async (req, res) => {
   }
 });
 
-// --- Start server ---
-
 async function start() {
   try {
-    console.log("🔌 Connecting to MongoDB...");
     console.log("   URI:", MONGO_URI.replace(/\/\/.*:.*@/, "//***:***@")); // Hide credentials
     await mongoose.connect(MONGO_URI, {
       serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 45000,
     });
-    console.log("✅ Connected to MongoDB successfully");
-    console.log("📦 Database: payroll | Collection: users");
     
     app.listen(PORT, async () => {
-      console.log("🚀 API server started!");
-      console.log(`📍 Backend URL: http://localhost:${PORT}`);
-      console.log("📍 Frontend URL: http://localhost:5173");
-      console.log("\n✨ Authentication ready:");
-      console.log("   • POST /auth/register - Create account");
-      console.log("   • POST /auth/login - Sign in");
-      console.log("   • GET  /auth/me - Get user info");
-      console.log("\n🔗 API Endpoints:");
-      console.log("   • GET  /users - (Admin/HR only) List all users");
-      console.log("   • GET  /users/:id - Get user by ID (Employee can only see own data)");
-      console.log("   • PATCH /users/:id - (Admin/HR only) Update user");
-      console.log("   • DELETE /users/:id - (Admin/HR only) Delete user");
-      console.log("   • POST /users/invite - (Admin/HR) Invite new users");
-      console.log("\n🔐 Role-Based Access:");
-      console.log("   • admin   - Full access to all features");
-      console.log("   • hr      - HR access (manage users, payroll)");
-      console.log("   • employee - Limited access (only see own data & payslips)");
     });
   } catch (err) {
     console.error("\n❌ Failed to start server:");
@@ -968,4 +875,4 @@ async function start() {
 }
 
 start();
-
+

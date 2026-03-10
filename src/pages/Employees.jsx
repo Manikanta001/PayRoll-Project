@@ -171,7 +171,6 @@ export default function Employees() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold">Employees</h1>
@@ -197,7 +196,6 @@ export default function Employees() {
         </div>
       </div>
 
-      {/* Role-based message for employees */}
       {user?.role === 'employee' && (
         <div className="rounded-lg bg-blue-50 border border-blue-200 p-4">
           <p className="text-sm text-blue-700">
@@ -206,7 +204,6 @@ export default function Employees() {
         </div>
       )}
 
-      {/* Filters */}
       <div className="flex flex-col md:flex-row gap-4">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -240,12 +237,10 @@ export default function Employees() {
         </Select>
       </div>
 
-      {/* Results count */}
       <p className="text-sm text-muted-foreground">
         Showing {filteredEmployees.length} of {employees.length} employees
       </p>
 
-      {/* Employee Table */}
       <EmployeeTable
         employees={filteredEmployees}
         onEdit={handleEdit}
@@ -254,7 +249,6 @@ export default function Employees() {
         userRole={user?.role}
       />
 
-      {/* Add/Edit Form */}
       <EmployeeForm
         open={showForm}
         onOpenChange={setShowForm}
@@ -263,7 +257,6 @@ export default function Employees() {
         isLoading={createMutation.isPending || updateMutation.isPending}
       />
 
-      {/* Delete Confirmation with Password */}
       <AlertDialog open={!!deleteEmployee} onOpenChange={(open) => { if (!open) { setDeleteEmployee(null); setDeletePassword(''); setDeleteError(''); } }}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -305,7 +298,6 @@ export default function Employees() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* View Employee Details */}
       <Dialog open={!!viewEmployee} onOpenChange={() => setViewEmployee(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>

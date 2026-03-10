@@ -2,7 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-
 :root {
   --background: 210 20% 98%;
   --foreground: 215 25% 15%;
@@ -75,7 +74,6 @@
   }
 }
 
-/* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -93,7 +91,6 @@
   @apply bg-muted-foreground/50;
 }
 
-/* Print styles for payslip */
 @media print {
   .no-print {
     display: none !important;

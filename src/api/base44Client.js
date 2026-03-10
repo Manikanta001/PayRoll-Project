@@ -2,7 +2,6 @@ import axios from "axios";
 
 const STORAGE_PREFIX = "local_base44_mock_v1:";
 
-// API base: in production (Vercel) use relative /api path, in dev use localhost:4000
 const API_BASE = import.meta.env.VITE_API_BASE || (import.meta.env.PROD ? "/api" : "http://localhost:4000");
 
 function safeParseJson(raw, fallback) {
@@ -133,7 +132,6 @@ function entityApi(entityName) {
 }
 
 function ensureSeedData() {
-  // No seed data - employees are managed by HR only
   const salary = readAll("SalaryRecord");
   if (salary.length === 0) {
     writeAll("SalaryRecord", []);
@@ -142,7 +140,6 @@ function ensureSeedData() {
   if (attendance.length === 0) {
     writeAll("Attendance", []);
   }
-  // Clear any existing seed employees from localStorage
   writeAll("Employee", []);
 }
 
@@ -166,25 +163,20 @@ export const base44 = {
     Employee: {
       async list() {
         try {
-          console.log("📥 Fetching employees from:", `${API_BASE}/employees`);
           const res = await axios.get(`${API_BASE}/employees`, {
             headers: {
               "x-user-role": localStorage.getItem(`${STORAGE_PREFIX}user_role`) || "admin",
               "x-user-id": getCurrentUserId() || "",
             },
           });
-          console.log("✅ Fetched employees:", res.data?.length || 0, "records");
           return res.data || [];
         } catch (error) {
           console.error("❌ Error fetching employees:", error.response?.status, error.response?.data || error.message);
-          // Fallback to local storage if API fails
-          console.log("⏮ Falling back to local employee data");
           return readAll("Employee") || [];
         }
       },
       async create(data) {
         try {
-          console.log("📤 Creating employee:", data.name);
           const res = await axios.post(`${API_BASE}/employees`, {
             name: data.name,
             email: data.email,
@@ -203,7 +195,6 @@ export const base44 = {
               "x-user-id": getCurrentUserId() || "",
             },
           });
-          console.log("✅ Employee created successfully:", res.data?.employee?.name);
           return res.data?.employee || res.data;
         } catch (error) {
           console.error("❌ Error creating employee:", error.response?.data || error.message);
@@ -212,7 +203,6 @@ export const base44 = {
       },
       async update(id, data) {
         try {
-          console.log("📤 Updating employee:", id);
           const res = await axios.patch(`${API_BASE}/users/${id}`, {
             full_name: data.name,
             email: data.email,
@@ -231,7 +221,6 @@ export const base44 = {
               "x-user-id": getCurrentUserId() || "",
             },
           });
-          console.log("✅ Employee updated successfully");
           return res.data;
         } catch (error) {
           console.error("❌ Error updating employee:", error.response?.data || error.message);
@@ -240,7 +229,6 @@ export const base44 = {
       },
       async delete(id, password) {
         try {
-          console.log("📤 Deleting employee:", id);
           const res = await axios.delete(`${API_BASE}/employees/${id}`, {
             headers: {
               "x-user-role": localStorage.getItem(`${STORAGE_PREFIX}user_role`) || "admin",
@@ -248,7 +236,6 @@ export const base44 = {
               "x-confirm-password": password || "",
             },
           });
-          console.log("✅ Employee deleted successfully");
           return { success: true };
         } catch (error) {
           console.error("❌ Error deleting employee:", error.response?.data || error.message);
@@ -259,14 +246,12 @@ export const base44 = {
     SalaryRecord: {
       async list() {
         try {
-          console.log("📥 Fetching salaries from:", `${API_BASE}/salaries`);
           const res = await axios.get(`${API_BASE}/salaries`, {
             headers: {
               "x-user-role": localStorage.getItem(`${STORAGE_PREFIX}user_role`) || "admin",
               "x-user-id": getCurrentUserId() || "",
             },
           });
-          console.log("✅ Fetched salaries:", res.data?.length || 0, "records");
           return res.data || [];
         } catch (error) {
           console.error("❌ Error fetching salaries:", error.response?.status, error.response?.data || error.message);
@@ -274,10 +259,7 @@ export const base44 = {
         }
       },
       async bulkCreate(records) {
-        // Fallback to local storage if API fails, but attempt API first
         try {
-          // The backend /salaries endpoint we added only returns success
-          // but we still want to keep local records for UI feedback
           const rows = readAll("SalaryRecord");
           const created = (records ?? []).map((data) => ({
             id: newId(),
@@ -299,7 +281,6 @@ export const base44 = {
               "x-user-id": getCurrentUserId() || "",
             },
           });
-          // Also update local copy
           const rows = readAll("SalaryRecord");
           const idx = rows.findIndex((r) => r.id === id);
           if (idx !== -1) {
@@ -316,9 +297,7 @@ export const base44 = {
     Attendance: {
       async list() {
         try {
-          console.log("📥 Fetching attendance from:", `${API_BASE}/attendance`);
           const res = await axios.get(`${API_BASE}/attendance`);
-          console.log("✅ Fetched attendance:", res.data?.length || 0, "records");
           return res.data || [];
         } catch (error) {
           console.error("❌ Error fetching attendance:", error.response?.status, error.response?.data || error.message);
@@ -388,10 +367,8 @@ export const base44 = {
     Payslip: {
       async list() {
         try {
-          console.log("📥 Fetching payslips from:", `${API_BASE}/payslips`);
           const userRole = localStorage.getItem(`${STORAGE_PREFIX}user_role`) || "employee";
           const userId = getCurrentUserId() || "";
-          console.log("🔐 User role:", userRole, "| UserID:", userId);
           
           const res = await axios.get(`${API_BASE}/payslips`, {
             headers: {
@@ -399,7 +376,6 @@ export const base44 = {
               "x-user-id": userId,
             },
           });
-          console.log("✅ Fetched payslips:", res.data?.length || 0, "records");
           return res.data || [];
         } catch (error) {
           console.error("❌ Error fetching payslips:", error.response?.status, error.response?.data || error.message);
@@ -408,14 +384,12 @@ export const base44 = {
       },
       async bulkCreate(data) {
         try {
-          console.log("📤 Creating", data.length, "payslips...");
           const res = await axios.post(`${API_BASE}/payslips/bulk-create`, data, {
             headers: {
               "x-user-role": localStorage.getItem(`${STORAGE_PREFIX}user_role`) || "admin",
               "x-user-id": getCurrentUserId() || "",
             },
           });
-          console.log("✅ Payslips created successfully:", res.data?.payslips?.length || 0);
           return res.data?.payslips || [];
         } catch (error) {
           console.error("❌ Error creating payslips:", error.response?.data || error.message);
@@ -484,7 +458,6 @@ export const base44 = {
       if (!meId) return null;
       const res = await axios.get(`${API_BASE}/auth/me`, { params: { userId: meId } });
       const user = res.data;
-      // Store user role for API headers
       if (user?.role) {
         localStorage.setItem(`${STORAGE_PREFIX}user_role`, user.role);
       }
@@ -495,7 +468,6 @@ export const base44 = {
       const res = await axios.post(`${API_BASE}/auth/login`, { email, password });
       const user = res.data;
       setCurrentUserId(user._id || user.id);
-      // Store user role for API headers
       if (user?.role) {
         localStorage.setItem(`${STORAGE_PREFIX}user_role`, user.role);
       }
@@ -504,18 +476,14 @@ export const base44 = {
 
     async registerWithEmailPassword(full_name, email, password, role = "employee") {
       try {
-        console.log("📝 Registering user:", { full_name, email, role });
-        console.log("🔗 Calling API:", `${API_BASE}/auth/register`);
         const res = await axios.post(`${API_BASE}/auth/register`, {
           full_name,
           email,
           password,
           role,
         });
-        console.log("✅ Registration successful! User:", res.data);
         const user = res.data;
         setCurrentUserId(user._id || user.id);
-        // Store user role for API headers
         if (user?.role) {
           localStorage.setItem(`${STORAGE_PREFIX}user_role`, user.role);
         }
@@ -555,13 +523,11 @@ export const base44 = {
   integrations: {
     Core: {
       async SendEmail({ to, subject, body }) {
-        // Local stub so UI flows keep working without Base44.
         if (typeof console !== "undefined") {
-          console.log("[MockEmail] to=", to, "subject=", subject, "body=", body);
         }
         return { success: true };
       },
     },
   },
 };
-
+

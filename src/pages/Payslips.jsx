@@ -51,31 +51,6 @@ export default function Payslips() {
     retry: false,
   });
 
-  // DEBUG: Log what we're receiving
-  React.useEffect(() => {
-    console.log('📋 Payslips Component Debug:', {
-      payslips: payslips.length,
-      employees: employees.length,
-      isLoading: loadingPayslips || loadingEmployees,
-      payslipsError: payslipsError?.message,
-      employeesError: employeesError?.message,
-      payslipsData: payslips,
-    });
-  }, [payslips, employees, loadingPayslips, loadingEmployees, payslipsError, employeesError]);
-
-  // Debug logging
-  React.useEffect(() => {
-    console.log("📋 Payslips Component Debug:", {
-      loadingEmployees,
-      employeesError: employeesError?.message,
-      employees: employees.length,
-      loadingPayslips,
-      payslipsError: payslipsError?.message,
-      payslips: payslips.length,
-      isLoading: loadingEmployees || loadingPayslips,
-    });
-  }, [loadingEmployees, employeesError, employees, loadingPayslips, payslipsError, payslips]);
-
   const isLoading = loadingEmployees || loadingPayslips;
 
   const deletePayslipMutation = useMutation({
@@ -94,7 +69,6 @@ export default function Payslips() {
     },
   });
 
-  // Generate month options
   const monthOptions = [];
   for (let i = 0; i < 12; i++) {
     const date = subMonths(new Date(), i);
@@ -114,7 +88,6 @@ export default function Payslips() {
     return matchesSearch && matchesMonth;
   });
 
-  // Group by employee for employee view
   const employeePayslips = employees.map(emp => {
     const empPayslips = payslips.filter(s => s.employee_id === emp.id);
     return {
@@ -221,7 +194,6 @@ PayRoll Pro Team
     );
   }
 
-  // Show errors clearly
   if (payslipsError || employeesError) {
     return (
       <div className="space-y-6">
@@ -243,7 +215,6 @@ PayRoll Pro Team
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold">Payslips</h1>
@@ -255,7 +226,6 @@ PayRoll Pro Team
         </Button>
       </div>
 
-      {/* Filters */}
       <div className="flex flex-col md:flex-row gap-4">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -280,7 +250,6 @@ PayRoll Pro Team
         </Select>
       </div>
 
-      {/* Payslips Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredRecords.map((payslip) => (
           <Card key={payslip._id} className="hover:shadow-lg transition-shadow">
@@ -374,7 +343,6 @@ PayRoll Pro Team
         </Card>
       )}
 
-      {/* Payslip Modal */}
       <PayslipModal
         open={!!viewPayslip}
         onOpenChange={() => setViewPayslip(null)}
@@ -384,7 +352,6 @@ PayRoll Pro Team
         onEmail={handleEmailPayslip}
       />
 
-      {/* Delete Payslip Confirmation with Password */}
       <AlertDialog open={!!deletePayslip} onOpenChange={(open) => { if (!open) { setDeletePayslip(null); setDeletePassword(''); setDeleteError(''); } }}>
         <AlertDialogContent>
           <AlertDialogHeader>

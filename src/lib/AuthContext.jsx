@@ -8,8 +8,6 @@ export const AuthProvider = ({ children }) => {
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
-  // This project originally relied on Base44 auth/public-settings.
-  // For local-only runs, we keep the same interface the app expects.
   const [isLoadingPublicSettings] = useState(false);
   const [authError] = useState(null);
 
@@ -29,11 +27,9 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const navigateToLogin = () => {
-    // Kept for compatibility with App.jsx; actual navigation is handled in the SignIn page.
   };
 
   const signInWithEmail = async (email) => {
-    console.warn("signInWithEmail is deprecated, use signInWithEmailPassword instead.");
     return null;
   };
 

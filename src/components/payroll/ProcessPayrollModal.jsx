@@ -25,7 +25,6 @@ export default function ProcessPayrollModal({
 
   useEffect(() => {
     if (open) {
-      // Select all active employees by default
       const activeEmployees = employees.filter(e => e.status === 'Active' || !e.status);
       setSelectedEmployees(activeEmployees.map(e => e.id));
       calculateSalaries(activeEmployees.map(e => e.id), month);
@@ -37,10 +36,8 @@ export default function ProcessPayrollModal({
       const employee = employees.find(e => e.id === empId);
       if (!employee) return null;
 
-      // Aggregate day-level attendance records for this employee & month
       const monthAttendance = attendanceRecords.filter(a => {
         if (a.employee_id !== empId) return false;
-        // Handle both YYYY-MM month field and ISO date field
         if (a.month) return a.month === selectedMonth;
         if (a.date) {
           const d = new Date(a.date);
@@ -56,23 +53,19 @@ export default function ProcessPayrollModal({
         ? monthAttendance.filter(a => a.status === 'Present').length
         : workingDays;
 
-      // Pro-rate salary based on attendance
       const attendanceRatio = workingDays > 0 ? presentDays / workingDays : 1;
       const proRatedBasic = Math.round(basicSalary * attendanceRatio);
 
-      // Calculate components
       const hra = Math.round(proRatedBasic * 0.20); // 20% HRA
       const da = Math.round(proRatedBasic * 0.10);  // 10% DA
       const grossSalary = proRatedBasic + hra + da;
 
-      // Calculate deductions
       const pfDeduction = Math.round(proRatedBasic * 0.12); // 12% PF
       const taxDeduction = Math.round(grossSalary * 0.05);  // 5% Tax
       const totalDeductions = pfDeduction + taxDeduction;
 
       const netSalary = grossSalary - totalDeductions;
 
-      // Check if already processed
       const existing = existingSalaries.find(
         s => s.employee_id === empId && s.month === selectedMonth
       );
@@ -234,7 +227,6 @@ export default function ProcessPayrollModal({
             </table>
           </ScrollArea>
 
-          {/* Totals */}
           <div className="flex justify-end gap-6 p-4 bg-muted/30 rounded-lg">
             <div className="text-right">
               <p className="text-xs text-muted-foreground">Total Gross</p>

@@ -34,18 +34,15 @@ export default function Reports() {
 
   const isLoading = loadingEmployees || loadingSalaries || loadingAttendance;
 
-  // Year options
   const yearOptions = [];
   for (let i = 0; i < 3; i++) {
     const year = new Date().getFullYear() - i;
     yearOptions.push({ value: String(year), label: String(year) });
   }
 
-  // Filter data by year
   const yearSalaries = salaryRecords.filter(s => s.month?.startsWith(selectedYear));
   const yearAttendance = attendance.filter(a => a.month?.startsWith(selectedYear));
 
-  // Monthly payroll data
   const monthlyPayrollData = [];
   for (let i = 0; i < 12; i++) {
     const month = `${selectedYear}-${String(i + 1).padStart(2, '0')}`;
@@ -78,7 +75,6 @@ export default function Reports() {
     monthlyPayrollData.push(data);
   }
 
-  // Department summary
   const departmentData = employees.reduce((acc, emp) => {
     const dept = emp.department || 'Other';
     const existing = acc.find(d => d.name === dept);
@@ -100,13 +96,11 @@ export default function Reports() {
     return acc;
   }, []);
 
-  // Totals
   const totalGross = yearSalaries.reduce((sum, s) => sum + (s.gross_salary || 0), 0);
   const totalNet = yearSalaries.reduce((sum, s) => sum + (s.net_salary || 0), 0);
   const totalDeductions = yearSalaries.reduce((sum, s) => sum + (s.total_deductions || 0), 0);
   const avgMonthlyPayroll = totalNet / 12;
 
-  // Attendance summary
   const avgAttendance = yearAttendance.length > 0
     ? Math.round(yearAttendance.reduce((sum, a) => {
         return sum + (a.working_days > 0 ? (a.present_days / a.working_days) * 100 : 100);
@@ -160,7 +154,6 @@ export default function Reports() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold">Reports</h1>
@@ -193,7 +186,6 @@ export default function Reports() {
         </div>
       </div>
 
-      {/* Summary Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
@@ -227,7 +219,6 @@ export default function Reports() {
         </Card>
       </div>
 
-      {/* Tabs */}
       <Tabs defaultValue="payroll" className="space-y-4">
         <TabsList>
           <TabsTrigger value="payroll">Monthly Payroll</TabsTrigger>
@@ -357,7 +348,6 @@ export default function Reports() {
             </CardContent>
           </Card>
 
-          {/* Employee Count by Month */}
           <Card>
             <CardHeader>
               <CardTitle>Employees Processed per Month</CardTitle>

@@ -24,7 +24,6 @@ export default function EmployeeTable({ employees, onEdit, onDelete, onView, use
     return name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'NA';
   };
 
-  // Check if user can edit/delete (only HR and Admin)
   const canModify = userRole && (userRole === 'admin' || userRole === 'hr');
 
   return (

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import { cn } from "@/lib/utils";
+
+const createPageUrl = (pageName) => '/' + pageName.replace(/ /g, '-');
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { 
@@ -82,7 +83,6 @@ export default function Layout({ children, currentPageName }) {
       const isHROrAdmin = user?.role === 'admin' || user?.role === 'hr';
       const items = [];
 
-      // Fetch recent payslips for notifications
       const payslips = await base44.entities.Payslip.list();
       if (payslips.length > 0) {
         const recent = payslips.slice(0, 3);
@@ -99,7 +99,6 @@ export default function Layout({ children, currentPageName }) {
       }
 
       if (isHROrAdmin) {
-        // Fetch recent employees
         const employees = await base44.entities.Employee.list();
         if (employees.length > 0) {
           const recent = employees.slice(0, 2);
@@ -116,7 +115,6 @@ export default function Layout({ children, currentPageName }) {
         }
       }
 
-      // Sort by time, most recent first
       setNotifications(items);
       setUnreadCount(items.length);
     } catch (err) {
@@ -144,7 +142,6 @@ export default function Layout({ children, currentPageName }) {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div 
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
@@ -152,12 +149,10 @@ export default function Layout({ children, currentPageName }) {
         />
       )}
 
-      {/* Sidebar */}
       <aside className={cn(
         "fixed top-0 left-0 z-50 h-full w-64 bg-card border-r transform transition-transform duration-300 ease-in-out lg:translate-x-0",
         sidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
-        {/* Logo */}
         <div className="flex items-center gap-3 px-6 py-5 border-b">
           <div className="p-2 rounded-xl bg-primary">
             <Building2 className="h-6 w-6 text-primary-foreground" />
@@ -176,7 +171,6 @@ export default function Layout({ children, currentPageName }) {
           </Button>
         </div>
 
-        {/* Navigation */}
         <nav className="p-4 space-y-1">
           {navItems.map((item) => {
             const isActive = currentPageName === item.href;
@@ -199,7 +193,6 @@ export default function Layout({ children, currentPageName }) {
           })}
         </nav>
 
-        {/* User section at bottom */}
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t bg-card">
           <div className="flex items-center gap-3 px-2">
             <Avatar className="h-9 w-9">
@@ -215,9 +208,7 @@ export default function Layout({ children, currentPageName }) {
         </div>
       </aside>
 
-      {/* Main content */}
       <div className="lg:pl-64">
-        {/* Top header */}
         <header className="sticky top-0 z-30 bg-card/80 backdrop-blur-sm border-b">
           <div className="flex items-center justify-between px-4 py-3">
             <div className="flex items-center gap-4">
@@ -328,7 +319,6 @@ export default function Layout({ children, currentPageName }) {
           </div>
         </header>
 
-        {/* Page content */}
         <main className="p-4 md:p-6 lg:p-8">
           {children}
         </main>

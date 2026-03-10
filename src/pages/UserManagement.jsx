@@ -84,7 +84,6 @@ export default function UserManagement() {
     employee: 'bg-gray-100 text-gray-700 border-gray-200',
   };
 
-  // Stats
   const adminCount = users.filter(u => u.role === 'admin').length;
   const hrCount = users.filter(u => u.role === 'hr').length;
   const employeeCount = users.filter(u => u.role === 'employee' || !u.role).length;
@@ -105,7 +104,6 @@ export default function UserManagement() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold">User Management</h1>
@@ -117,7 +115,6 @@ export default function UserManagement() {
         </Button>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardContent className="p-4 flex items-center gap-4">
@@ -154,7 +151,6 @@ export default function UserManagement() {
         </Card>
       </div>
 
-      {/* Search */}
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
@@ -165,7 +161,6 @@ export default function UserManagement() {
         />
       </div>
 
-      {/* Users Table */}
       <Card>
         <CardContent className="p-0">
           <Table>
@@ -246,7 +241,6 @@ export default function UserManagement() {
         </CardContent>
       </Card>
 
-      {/* Role Descriptions */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Role Permissions</CardTitle>
@@ -266,7 +260,6 @@ export default function UserManagement() {
         </CardContent>
       </Card>
 
-      {/* Invite Dialog */}
       <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
         <DialogContent>
           <DialogHeader>

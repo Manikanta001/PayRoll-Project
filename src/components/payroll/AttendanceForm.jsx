@@ -67,7 +67,6 @@ export default function AttendanceForm({ open, onOpenChange, attendance, employe
   const handleChange = (field, value) => {
     setFormData(prev => {
       const newData = { ...prev, [field]: value };
-      // Auto-calculate absent days
       if (field === 'working_days' || field === 'present_days' || field === 'leave_days') {
         const working = field === 'working_days' ? parseInt(value) || 0 : parseInt(prev.working_days) || 0;
         const present = field === 'present_days' ? parseInt(value) || 0 : parseInt(prev.present_days) || 0;

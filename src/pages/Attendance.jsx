@@ -90,14 +90,12 @@ export default function Attendance() {
     markAttendanceMutation.mutate(records);
   };
 
-  // Get today's attendance records
   const todayRecords = allAttendance.filter(record => {
     const recordDate = new Date(record.date).toLocaleDateString();
     const selectedDateObj = new Date(selectedDate).toLocaleDateString();
     return recordDate === selectedDateObj;
   });
 
-  // Get recent attendance (last 20 records)
   const recentRecords = allAttendance.slice(0, 20);
 
   if (isLoading) {
@@ -129,7 +127,6 @@ export default function Attendance() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold">Attendance</h1>
@@ -153,7 +150,6 @@ export default function Attendance() {
             <CardTitle>Mark Attendance for {format(new Date(selectedDate), 'MMMM d, yyyy')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Date picker */}
             <div className="flex gap-4 items-end">
               <div className="flex-1">
                 <label className="block text-sm font-medium mb-2">Select Date</label>
@@ -169,7 +165,6 @@ export default function Attendance() {
               </div>
             </div>
 
-            {/* Search */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -180,7 +175,6 @@ export default function Attendance() {
               />
             </div>
 
-            {/* Employee list */}
             <div className="space-y-2 max-h-96 overflow-y-auto">
               {filteredEmployees.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-8">
@@ -230,7 +224,6 @@ export default function Attendance() {
               )}
             </div>
 
-            {/* Submit button */}
             <div className="flex justify-end gap-2 pt-4">
               <Button
                 variant="outline"
@@ -252,7 +245,6 @@ export default function Attendance() {
         </Card>
       )}
 
-      {/* Recent attendance records */}
       <Card>
         <CardHeader>
           <CardTitle>Recent Attendance Records</CardTitle>

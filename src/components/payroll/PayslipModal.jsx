@@ -66,7 +66,6 @@ export default function PayslipModal({ open, onOpenChange, salary, employee, onD
         </DialogHeader>
 
         <div ref={payslipRef} className="payslip bg-white p-6 rounded-lg">
-          {/* Company Header */}
           <div className="text-center mb-6">
             <h1 className="text-3xl font-bold text-primary">PayRoll Pro</h1>
           </div>
@@ -75,7 +74,6 @@ export default function PayslipModal({ open, onOpenChange, salary, employee, onD
 
           <h2 className="text-lg font-semibold text-center mb-4">SALARY SLIP FOR {salaryMonth.toUpperCase()}</h2>
 
-          {/* Employee Details */}
           <div className="grid grid-cols-2 gap-4 mb-6 text-sm">
             <div className="space-y-2">
               <div className="flex justify-between">
@@ -109,9 +107,7 @@ export default function PayslipModal({ open, onOpenChange, salary, employee, onD
 
           <Separator className="my-4" />
 
-          {/* Earnings and Deductions */}
           <div className="grid grid-cols-2 gap-6">
-            {/* Earnings */}
             <div>
               <h3 className="font-semibold mb-3 text-green-700">Earnings</h3>
               <div className="space-y-2 text-sm">
@@ -141,7 +137,6 @@ export default function PayslipModal({ open, onOpenChange, salary, employee, onD
               </div>
             </div>
 
-            {/* Deductions */}
             <div>
               <h3 className="font-semibold mb-3 text-red-700">Deductions</h3>
               <div className="space-y-2 text-sm">
@@ -170,13 +165,11 @@ export default function PayslipModal({ open, onOpenChange, salary, employee, onD
 
           <Separator className="my-4" />
 
-          {/* Net Salary */}
           <div className="bg-primary/5 rounded-lg p-4 text-center">
             <p className="text-sm text-muted-foreground mb-1">Net Salary</p>
             <p className="text-3xl font-bold text-primary">₹{salary.net_salary?.toLocaleString()}</p>
           </div>
 
-          {/* Footer */}
           <div className="mt-6 pt-4 border-t text-xs text-muted-foreground text-center">
             <p>This is a computer-generated payslip and does not require a signature.</p>
             <p className="mt-1">Generated on {format(new Date(), 'MMMM dd, yyyy')}</p>

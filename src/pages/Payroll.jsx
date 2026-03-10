@@ -44,7 +44,6 @@ export default function Payroll() {
       if (!records || records.length === 0) {
         throw new Error('No employees to process. All may already be processed for this month.');
       }
-      // Create Payslips on the backend (SalaryRecords are derived from payslips via /salaries API)
       const payslips = await base44.entities.Payslip.bulkCreate(records);
       return payslips;
     },
@@ -72,7 +71,6 @@ export default function Payroll() {
     },
   });
 
-  // Generate month options
   const monthOptions = [];
   for (let i = 0; i < 12; i++) {
     const date = subMonths(new Date(), i);
@@ -93,7 +91,6 @@ export default function Payroll() {
     return matchesSearch && matchesMonth && matchesStatus;
   });
 
-  // Stats for selected month
   const monthRecords = salaryRecords.filter(r => r.month === monthFilter);
   const totalGross = monthRecords.reduce((sum, r) => sum + (r.gross_salary || 0), 0);
   const totalDeductions = monthRecords.reduce((sum, r) => sum + (r.total_deductions || 0), 0);
@@ -101,7 +98,6 @@ export default function Payroll() {
   const paidCount = monthRecords.filter(r => r.status === 'Paid').length;
 
   const handleDownloadPayslip = (salary) => {
-    // Generate simple text-based payslip download
     const content = `
 PAYSLIP - ${format(new Date(salary.month + '-01'), 'MMMM yyyy')}
 =====================================
@@ -220,7 +216,6 @@ Payroll Team
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold">Payroll</h1>
@@ -238,7 +233,6 @@ Payroll Team
         </div>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
@@ -272,7 +266,6 @@ Payroll Team
         </Card>
       </div>
 
-      {/* Filters */}
       <div className="flex flex-col md:flex-row gap-4">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -308,12 +301,10 @@ Payroll Team
         </Select>
       </div>
 
-      {/* Results */}
       <p className="text-sm text-muted-foreground">
         Showing {filteredRecords.length} salary records
       </p>
 
-      {/* Salary Table */}
       <SalaryTable
         records={filteredRecords}
         onViewPayslip={setViewPayslip}
@@ -322,7 +313,6 @@ Payroll Team
         onStatusChange={(record, status) => updateStatusMutation.mutate({ id: record.id, status })}
       />
 
-      {/* Process Payroll Modal */}
       <ProcessPayrollModal
         open={showProcessModal}
         onOpenChange={setShowProcessModal}
@@ -333,7 +323,6 @@ Payroll Team
         isLoading={createSalariesMutation.isPending}
       />
 
-      {/* Payslip Modal */}
       <PayslipModal
         open={!!viewPayslip}
         onOpenChange={() => setViewPayslip(null)}

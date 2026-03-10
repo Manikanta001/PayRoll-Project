@@ -30,7 +30,6 @@ export default function Register() {
       return;
     }
     
-    // Validate role password for HR/Admin
     if (role === "hr" && rolePassword !== "hr@9878") {
       setError("Invalid HR password. Correct password is required to register as HR.");
       return;
@@ -41,9 +40,7 @@ export default function Register() {
     }
     
     try {
-      console.log("Attempting registration with:", { fullName, email, role });
       const user = await registerWithEmailPassword(fullName, email, password, role);
-      console.log("Registration successful!");
       if (user) {
         navigate("/Dashboard");
       }
@@ -170,4 +167,4 @@ export default function Register() {
     </div>
   );
 }
-
+
