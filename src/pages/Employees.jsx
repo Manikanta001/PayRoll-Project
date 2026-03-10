@@ -14,7 +14,6 @@ import RequireElevated from '@/components/RequireElevated';
 import { Label } from "@/components/ui/label";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -280,20 +279,19 @@ export default function Employees() {
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => { setDeletePassword(''); setDeleteError(''); }}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault();
+            <Button
+              variant="destructive"
+              onClick={() => {
                 if (!deletePassword) {
                   setDeleteError('Password is required');
                   return;
                 }
                 deleteMutation.mutate({ id: deleteEmployee.id, password: deletePassword });
               }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={deleteMutation.isPending}
             >
               {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
-            </AlertDialogAction>
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

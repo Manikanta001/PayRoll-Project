@@ -15,7 +15,6 @@ import { useAuth } from '@/lib/AuthContext';
 import { Label } from "@/components/ui/label";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -375,20 +374,19 @@ PayRoll Pro Team
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => { setDeletePassword(''); setDeleteError(''); }}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault();
+            <Button
+              variant="destructive"
+              onClick={() => {
                 if (!deletePassword) {
                   setDeleteError('Password is required');
                   return;
                 }
                 deletePayslipMutation.mutate({ id: deletePayslip._id, password: deletePassword });
               }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={deletePayslipMutation.isPending}
             >
               {deletePayslipMutation.isPending ? 'Deleting...' : 'Delete'}
-            </AlertDialogAction>
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

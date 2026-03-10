@@ -145,7 +145,8 @@ export default function Register() {
             )}
             {role === "employee" && (
               <p className="text-xs text-muted-foreground bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-                Note: Employees must be added by HR first. Your default login password is <strong>YourFirstName9878</strong>. You can register here to set a new password.
+                Note: Employees must be added by HR first <br />
+                You can set a new password after HR adds you to the system.
               </p>
             )}
             {error && <p className="text-sm text-red-600">{error}</p>}
@@ -167,4 +168,4 @@ export default function Register() {
     </div>
   );
 }
-
+
