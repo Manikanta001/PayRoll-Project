@@ -29,7 +29,7 @@ export default function DepartmentChart({ data, title = "Department Distribution
                 ))}
               </Pie>
               <Tooltip 
-                formatter={(value, name) => [`$${value.toLocaleString()}`, name]}
+                formatter={(value, name) => [`₹${value.toLocaleString()}`, name]}
                 contentStyle={{ 
                   backgroundColor: 'hsl(var(--card))', 
                   border: '1px solid hsl(var(--border))',

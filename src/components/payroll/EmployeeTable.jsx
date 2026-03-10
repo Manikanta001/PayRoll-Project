@@ -66,7 +66,7 @@ export default function EmployeeTable({ employees, onEdit, onDelete, onView, use
                 <TableCell>{employee.department}</TableCell>
                 <TableCell>{employee.designation}</TableCell>
                 <TableCell className="text-right font-medium">
-                  ${employee.basic_salary?.toLocaleString()}
+                  ₹{employee.basic_salary?.toLocaleString()}
                 </TableCell>
                 <TableCell>
                   {employee.joining_date ? format(new Date(employee.joining_date), 'MMM dd, yyyy') : '-'}

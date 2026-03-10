@@ -215,12 +215,12 @@ export default function ProcessPayrollModal({
                         )}
                       </div>
                     </td>
-                    <td className="p-2 text-right text-sm">${calc.basic_salary?.toLocaleString()}</td>
-                    <td className="p-2 text-right text-sm">${calc.hra?.toLocaleString()}</td>
-                    <td className="p-2 text-right text-sm">${calc.da?.toLocaleString()}</td>
-                    <td className="p-2 text-right text-sm font-medium">${calc.gross_salary?.toLocaleString()}</td>
-                    <td className="p-2 text-right text-sm text-red-500">-${calc.total_deductions?.toLocaleString()}</td>
-                    <td className="p-2 text-right text-sm font-bold text-green-600">${calc.net_salary?.toLocaleString()}</td>
+                    <td className="p-2 text-right text-sm">₹{calc.basic_salary?.toLocaleString()}</td>
+                    <td className="p-2 text-right text-sm">₹{calc.hra?.toLocaleString()}</td>
+                    <td className="p-2 text-right text-sm">₹{calc.da?.toLocaleString()}</td>
+                    <td className="p-2 text-right text-sm font-medium">₹{calc.gross_salary?.toLocaleString()}</td>
+                    <td className="p-2 text-right text-sm text-red-500">-₹{calc.total_deductions?.toLocaleString()}</td>
+                    <td className="p-2 text-right text-sm font-bold text-green-600">₹{calc.net_salary?.toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>
@@ -230,15 +230,15 @@ export default function ProcessPayrollModal({
           <div className="flex justify-end gap-6 p-4 bg-muted/30 rounded-lg">
             <div className="text-right">
               <p className="text-xs text-muted-foreground">Total Gross</p>
-              <p className="font-semibold">${totals.gross.toLocaleString()}</p>
+              <p className="font-semibold">₹{totals.gross.toLocaleString()}</p>
             </div>
             <div className="text-right">
               <p className="text-xs text-muted-foreground">Total Deductions</p>
-              <p className="font-semibold text-red-500">${totals.deductions.toLocaleString()}</p>
+              <p className="font-semibold text-red-500">₹{totals.deductions.toLocaleString()}</p>
             </div>
             <div className="text-right">
               <p className="text-xs text-muted-foreground">Total Net</p>
-              <p className="font-bold text-green-600 text-lg">${totals.net.toLocaleString()}</p>
+              <p className="font-bold text-green-600 text-lg">₹{totals.net.toLocaleString()}</p>
             </div>
           </div>
         </div>

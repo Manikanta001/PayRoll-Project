@@ -337,7 +337,7 @@ export default function Employees() {
                 </div>
                 <div>
                   <p className="text-muted-foreground">Basic Salary</p>
-                  <p className="font-medium">${viewEmployee.basic_salary?.toLocaleString()}</p>
+                  <p className="font-medium">₹{viewEmployee.basic_salary?.toLocaleString()}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Joining Date</p>

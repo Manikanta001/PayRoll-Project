@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calculator, Search, Download, Calendar, DollarSign, TrendingUp } from "lucide-react";
+import { Calculator, Search, Download, Calendar, IndianRupee, TrendingUp } from "lucide-react";
 import SalaryTable from '@/components/payroll/SalaryTable';
 import PayslipModal from '@/components/payroll/PayslipModal';
 import ProcessPayrollModal from '@/components/payroll/ProcessPayrollModal';
@@ -105,17 +105,17 @@ Employee: ${salary.employee_name}
 Department: ${salary.department}
 
 EARNINGS:
-Basic Salary: $${salary.basic_salary?.toLocaleString()}
-HRA (20%): $${salary.hra?.toLocaleString()}
-DA (10%): $${salary.da?.toLocaleString()}
-Gross Salary: $${salary.gross_salary?.toLocaleString()}
+Basic Salary: ₹${salary.basic_salary?.toLocaleString()}
+HRA (20%): ₹${salary.hra?.toLocaleString()}
+DA (10%): ₹${salary.da?.toLocaleString()}
+Gross Salary: ₹${salary.gross_salary?.toLocaleString()}
 
 DEDUCTIONS:
-PF (12%): $${salary.pf_deduction?.toLocaleString()}
-Tax (5%): $${salary.tax_deduction?.toLocaleString()}
-Total Deductions: $${salary.total_deductions?.toLocaleString()}
+PF (12%): ₹${salary.pf_deduction?.toLocaleString()}
+Tax (5%): ₹${salary.tax_deduction?.toLocaleString()}
+Total Deductions: ₹${salary.total_deductions?.toLocaleString()}
 
-NET SALARY: $${salary.net_salary?.toLocaleString()}
+NET SALARY: ₹${salary.net_salary?.toLocaleString()}
 =====================================
     `;
     
@@ -142,17 +142,17 @@ Dear ${salary.employee_name},
 Please find below your salary details for ${format(new Date(salary.month + '-01'), 'MMMM yyyy')}:
 
 EARNINGS:
-- Basic Salary: $${salary.basic_salary?.toLocaleString()}
-- HRA (20%): $${salary.hra?.toLocaleString()}
-- DA (10%): $${salary.da?.toLocaleString()}
-- Gross Salary: $${salary.gross_salary?.toLocaleString()}
+- Basic Salary: ₹${salary.basic_salary?.toLocaleString()}
+- HRA (20%): ₹${salary.hra?.toLocaleString()}
+- DA (10%): ₹${salary.da?.toLocaleString()}
+- Gross Salary: ₹${salary.gross_salary?.toLocaleString()}
 
 DEDUCTIONS:
-- PF (12%): $${salary.pf_deduction?.toLocaleString()}
-- Tax (5%): $${salary.tax_deduction?.toLocaleString()}
-- Total Deductions: $${salary.total_deductions?.toLocaleString()}
+- PF (12%): ₹${salary.pf_deduction?.toLocaleString()}
+- Tax (5%): ₹${salary.tax_deduction?.toLocaleString()}
+- Total Deductions: ₹${salary.total_deductions?.toLocaleString()}
 
-NET SALARY: $${salary.net_salary?.toLocaleString()}
+NET SALARY: ₹${salary.net_salary?.toLocaleString()}
 
 If you have any questions, please contact HR.
 
@@ -237,10 +237,10 @@ Payroll Team
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-1">
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
+              <IndianRupee className="h-4 w-4 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">Total Gross</p>
             </div>
-            <p className="text-2xl font-bold">${totalGross.toLocaleString()}</p>
+            <p className="text-2xl font-bold">₹{totalGross.toLocaleString()}</p>
           </CardContent>
         </Card>
         <Card>
@@ -249,13 +249,13 @@ Payroll Team
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">Deductions</p>
             </div>
-            <p className="text-2xl font-bold text-red-500">${totalDeductions.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-red-500">₹{totalDeductions.toLocaleString()}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
             <p className="text-sm text-muted-foreground mb-1">Net Payable</p>
-            <p className="text-2xl font-bold text-green-600">${totalNet.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-green-600">₹{totalNet.toLocaleString()}</p>
           </CardContent>
         </Card>
         <Card>

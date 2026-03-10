@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, DollarSign, Calendar, TrendingUp, Building2, Clock } from "lucide-react";
+import { Users, IndianRupee, Calendar, TrendingUp, Building2, Clock } from "lucide-react";
 import StatCard from '@/components/payroll/StatCard';
 import DepartmentChart from '@/components/payroll/DepartmentChart';
 import SalaryChart from '@/components/payroll/SalaryChart';
@@ -124,15 +124,15 @@ export default function Dashboard() {
         />
         <StatCard
           title="Monthly Payroll"
-          value={`$${totalPayroll.toLocaleString()}`}
+          value={`₹${totalPayroll.toLocaleString()}`}
           subtitle={format(new Date(), 'MMMM yyyy')}
-          icon={DollarSign}
+          icon={IndianRupee}
           trend={`${payrollChange}% vs last month`}
           trendUp={parseFloat(payrollChange) >= 0}
         />
         <StatCard
           title="Average Salary"
-          value={`$${avgSalary.toLocaleString()}`}
+          value={`₹${avgSalary.toLocaleString()}`}
           subtitle="Per employee"
           icon={TrendingUp}
         />
@@ -170,7 +170,7 @@ export default function Dashboard() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold">${dept.value.toLocaleString()}</p>
+                    <p className="font-semibold">₹{dept.value.toLocaleString()}</p>
                     <p className="text-xs text-muted-foreground">Total salary</p>
                   </div>
                 </div>
@@ -202,7 +202,7 @@ export default function Dashboard() {
             </div>
             <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
               <div className="flex items-center gap-2">
-                <DollarSign className="h-4 w-4 text-green-600" />
+                <IndianRupee className="h-4 w-4 text-green-600" />
                 <span className="text-sm">Paid This Month</span>
               </div>
               <span className="font-semibold text-green-600">

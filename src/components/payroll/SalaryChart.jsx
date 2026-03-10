@@ -21,10 +21,10 @@ export default function SalaryChart({ data, title = "Monthly Payroll Expense" })
               <YAxis 
                 tick={{ fontSize: 12 }}
                 stroke="hsl(var(--muted-foreground))"
-                tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}k`}
               />
               <Tooltip 
-                formatter={(value) => [`$${value.toLocaleString()}`, '']}
+                formatter={(value) => [`₹${value.toLocaleString()}`, '']}
                 contentStyle={{ 
                   backgroundColor: 'hsl(var(--card))', 
                   border: '1px solid hsl(var(--border))',

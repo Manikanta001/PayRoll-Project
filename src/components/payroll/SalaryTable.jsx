@@ -50,13 +50,13 @@ export default function SalaryTable({ records, onViewPayslip, onDownload, onEmai
                 </TableCell>
                 <TableCell className="font-medium">{record.month}</TableCell>
                 <TableCell className="text-right font-medium">
-                  ${record.gross_salary?.toLocaleString()}
+                  ₹{record.gross_salary?.toLocaleString()}
                 </TableCell>
                 <TableCell className="text-right text-red-500">
-                  -${record.total_deductions?.toLocaleString()}
+                  -₹{record.total_deductions?.toLocaleString()}
                 </TableCell>
                 <TableCell className="text-right font-bold text-green-600">
-                  ${record.net_salary?.toLocaleString()}
+                  ₹{record.net_salary?.toLocaleString()}
                 </TableCell>
                 <TableCell>
                   <Badge variant="outline" className={statusColors[record.status] || statusColors.Pending}>

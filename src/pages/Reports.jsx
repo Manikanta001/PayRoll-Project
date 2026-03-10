@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Download, Calendar, TrendingUp, Users, DollarSign, Building2 } from "lucide-react";
+import { Download, Calendar, TrendingUp, Users, IndianRupee, Building2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { format, subMonths, startOfYear, endOfYear } from 'date-fns';
@@ -190,10 +190,10 @@ export default function Reports() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-1">
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
+              <IndianRupee className="h-4 w-4 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">Total Gross ({selectedYear})</p>
             </div>
-            <p className="text-2xl font-bold">${totalGross.toLocaleString()}</p>
+            <p className="text-2xl font-bold">₹{totalGross.toLocaleString()}</p>
           </CardContent>
         </Card>
         <Card>
@@ -202,13 +202,13 @@ export default function Reports() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">Total Net Paid</p>
             </div>
-            <p className="text-2xl font-bold text-green-600">${totalNet.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-green-600">₹{totalNet.toLocaleString()}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
             <p className="text-sm text-muted-foreground mb-1">Avg Monthly Payroll</p>
-            <p className="text-2xl font-bold">${Math.round(avgMonthlyPayroll).toLocaleString()}</p>
+            <p className="text-2xl font-bold">₹{Math.round(avgMonthlyPayroll).toLocaleString()}</p>
           </CardContent>
         </Card>
         <Card>
@@ -241,9 +241,9 @@ export default function Reports() {
                   <BarChart data={monthlyPayrollData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" />
-                    <YAxis stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `$${(v/1000).toFixed(0)}k`} />
+                    <YAxis stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `₹${(v/1000).toFixed(0)}k`} />
                     <Tooltip 
-                      formatter={(value) => [`$${value.toLocaleString()}`, '']}
+                      formatter={(value) => [`₹${value.toLocaleString()}`, '']}
                       contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
                     />
                     <Legend />
@@ -287,7 +287,7 @@ export default function Reports() {
                         ))}
                       </Pie>
                       <Tooltip 
-                        formatter={(value) => [`$${value.toLocaleString()}`, '']}
+                        formatter={(value) => [`₹${value.toLocaleString()}`, '']}
                         contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
                       />
                     </PieChart>
@@ -312,8 +312,8 @@ export default function Reports() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="font-semibold">${dept.value.toLocaleString()}</p>
-                        <p className="text-xs text-muted-foreground">Avg: ${dept.avgSalary.toLocaleString()}</p>
+                        <p className="font-semibold">₹{dept.value.toLocaleString()}</p>
+                        <p className="text-xs text-muted-foreground">Avg: ₹{dept.avgSalary.toLocaleString()}</p>
                       </div>
                     </div>
                   ))}
@@ -334,9 +334,9 @@ export default function Reports() {
                   <LineChart data={monthlyPayrollData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" />
-                    <YAxis stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `$${(v/1000).toFixed(0)}k`} />
+                    <YAxis stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `₹${(v/1000).toFixed(0)}k`} />
                     <Tooltip 
-                      formatter={(value) => [`$${value.toLocaleString()}`, '']}
+                      formatter={(value) => [`₹${value.toLocaleString()}`, '']}
                       contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
                     />
                     <Legend />
