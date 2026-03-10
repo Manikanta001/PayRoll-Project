@@ -162,7 +162,7 @@ export default function PayslipModal({ open, onOpenChange, salary, employee, onD
                 <Separator className="my-2" />
                 <div className="flex justify-between font-semibold">
                   <span>Total Deductions</span>
-                  <span className="text-red-600">₹{salary.deductions?.toLocaleString()}</span>
+                  <span className="text-red-600">₹{(salary.total_deductions || salary.deductions || 0)?.toLocaleString()}</span>
                 </div>
               </div>
             </div>

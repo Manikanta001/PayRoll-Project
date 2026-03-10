@@ -41,10 +41,10 @@ export default function Payroll() {
 
   const createSalariesMutation = useMutation({
     mutationFn: async (records) => {
-      // Create SalaryRecords for local tracking
-      await base44.entities.SalaryRecord.bulkCreate(records);
-      
-      // Create Payslips on the backend
+      if (!records || records.length === 0) {
+        throw new Error('No employees to process. All may already be processed for this month.');
+      }
+      // Create Payslips on the backend (SalaryRecords are derived from payslips via /salaries API)
       const payslips = await base44.entities.Payslip.bulkCreate(records);
       return payslips;
     },

@@ -37,13 +37,24 @@ export default function ProcessPayrollModal({
       const employee = employees.find(e => e.id === empId);
       if (!employee) return null;
 
-      const attendance = attendanceRecords.find(
-        a => a.employee_id === empId && a.month === selectedMonth
-      );
+      // Aggregate day-level attendance records for this employee & month
+      const monthAttendance = attendanceRecords.filter(a => {
+        if (a.employee_id !== empId) return false;
+        // Handle both YYYY-MM month field and ISO date field
+        if (a.month) return a.month === selectedMonth;
+        if (a.date) {
+          const d = new Date(a.date);
+          const recordMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+          return recordMonth === selectedMonth;
+        }
+        return false;
+      });
 
       const basicSalary = employee.basic_salary || 0;
-      const workingDays = attendance?.working_days || 22;
-      const presentDays = attendance?.present_days || workingDays;
+      const workingDays = monthAttendance.length > 0 ? monthAttendance.length : 22;
+      const presentDays = monthAttendance.length > 0
+        ? monthAttendance.filter(a => a.status === 'Present').length
+        : workingDays;
 
       // Pro-rate salary based on attendance
       const attendanceRatio = workingDays > 0 ? presentDays / workingDays : 1;
