@@ -56,6 +56,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    sessionStorage.removeItem("payroll_elevated_verified_until");
     base44.auth.logout();
     setUser(null);
   };

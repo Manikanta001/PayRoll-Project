@@ -83,6 +83,14 @@ const AuthenticatedApp = () => {
       {Object.entries(Pages).map(([path, Page]) => {
         if (path === "SignIn" || path === "Register") return null;
 
+        const isSensitivePage = path === "UserManagement" || path === "Payroll";
+
+        const pageElement = (
+          <LayoutWrapper currentPageName={path}>
+            <Page />
+          </LayoutWrapper>
+        );
+
         return (
           <Route
             key={path}
@@ -90,11 +98,13 @@ const AuthenticatedApp = () => {
             element={
               <RequireAuth>
                 <RequireRole pageName={path}>
-                  <RequireElevated>
-                    <LayoutWrapper currentPageName={path}>
-                      <Page />
-                    </LayoutWrapper>
-                  </RequireElevated>
+                  {isSensitivePage ? (
+                    <RequireElevated>
+                      {pageElement}
+                    </RequireElevated>
+                  ) : (
+                    pageElement
+                  )}
                 </RequireRole>
               </RequireAuth>
             }
