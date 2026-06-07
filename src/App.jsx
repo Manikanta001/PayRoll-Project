@@ -93,7 +93,13 @@ const AuthenticatedApp = () => {
 
         const pageElement = (
           <LayoutWrapper currentPageName={path}>
-            <Page />
+            {isSensitivePage ? (
+              <RequireElevated>
+                <Page />
+              </RequireElevated>
+            ) : (
+              <Page />
+            )}
           </LayoutWrapper>
         );
 
@@ -104,13 +110,7 @@ const AuthenticatedApp = () => {
             element={
               <RequireAuth>
                 <RequireRole pageName={path}>
-                  {isSensitivePage ? (
-                    <RequireElevated>
-                      {pageElement}
-                    </RequireElevated>
-                  ) : (
-                    pageElement
-                  )}
+                  {pageElement}
                 </RequireRole>
               </RequireAuth>
             }
