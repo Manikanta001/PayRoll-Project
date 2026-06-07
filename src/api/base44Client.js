@@ -147,15 +147,29 @@ ensureSeedData();
 
 const AUTH_KEY = `${STORAGE_PREFIX}auth_user_id`;
 
+function getSessionStorage() {
+  if (typeof window === "undefined") {
+    const mem = new Map();
+    return {
+      getItem: (k) => (mem.has(k) ? mem.get(k) : null),
+      setItem: (k, v) => mem.set(k, v),
+      removeItem: (k) => mem.delete(k),
+    };
+  }
+  return window.sessionStorage;
+}
+const authStorage = getSessionStorage();
+const localStorage = authStorage;
+
 function getCurrentUserId() {
-  const stored = storage.getItem(AUTH_KEY);
+  const stored = authStorage.getItem(AUTH_KEY);
   if (stored) return stored;
   return null;
 }
 
 function setCurrentUserId(id) {
   if (!id) return;
-  storage.setItem(AUTH_KEY, id);
+  authStorage.setItem(AUTH_KEY, id);
 }
 
 export const base44 = {
@@ -575,7 +589,7 @@ export const base44 = {
     },
 
     logout() {
-      storage.removeItem(AUTH_KEY);
+      authStorage.removeItem(AUTH_KEY);
       localStorage.removeItem(`${STORAGE_PREFIX}user_role`);
       if (typeof window !== "undefined") {
         window.location.reload();

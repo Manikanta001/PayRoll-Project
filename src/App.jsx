@@ -20,7 +20,13 @@ const RequireAuth = ({ children }) => {
   const { user, isLoadingAuth } = useAuth();
   const location = useLocation();
 
-  if (isLoadingAuth) return children;
+  if (isLoadingAuth) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-slate-50">
+        <div className="w-8 h-8 border-4 border-slate-200 border-t-blue-600 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
   if (!user) return <Navigate to="/SignIn" replace state={{ from: location.pathname }} />;
 
   return children;
