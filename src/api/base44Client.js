@@ -442,12 +442,82 @@ export const base44 = {
     },
     User: {
       async list() {
-        const res = await axios.get(`${API_BASE}/users`);
+        const res = await axios.get(`${API_BASE}/users`, {
+          headers: {
+            "x-user-role": localStorage.getItem(`${STORAGE_PREFIX}user_role`) || "admin",
+            "x-user-id": getCurrentUserId() || "",
+          },
+        });
         return res.data;
       },
       async update(id, data) {
-        const res = await axios.patch(`${API_BASE}/users/${id}`, data);
+        const res = await axios.patch(`${API_BASE}/users/${id}`, data, {
+          headers: {
+            "x-user-role": localStorage.getItem(`${STORAGE_PREFIX}user_role`) || "admin",
+            "x-user-id": getCurrentUserId() || "",
+          },
+        });
         return res.data;
+      },
+    },
+    LeaveRequest: {
+      async list() {
+        try {
+          const userRole = localStorage.getItem(`${STORAGE_PREFIX}user_role`) || "employee";
+          const userId = getCurrentUserId() || "";
+          const res = await axios.get(`${API_BASE}/leaves`, {
+            headers: {
+              "x-user-role": userRole,
+              "x-user-id": userId,
+            },
+          });
+          return res.data || [];
+        } catch (error) {
+          console.error("Error fetching leaves:", error);
+          return [];
+        }
+      },
+      async create(data) {
+        try {
+          const res = await axios.post(`${API_BASE}/leaves`, data, {
+            headers: {
+              "x-user-role": localStorage.getItem(`${STORAGE_PREFIX}user_role`) || "employee",
+              "x-user-id": getCurrentUserId() || "",
+            },
+          });
+          return res.data;
+        } catch (error) {
+          console.error("Error creating leave request:", error);
+          throw error;
+        }
+      },
+      async update(id, data) {
+        try {
+          const res = await axios.patch(`${API_BASE}/leaves/${id}`, data, {
+            headers: {
+              "x-user-role": localStorage.getItem(`${STORAGE_PREFIX}user_role`) || "admin",
+              "x-user-id": getCurrentUserId() || "",
+            },
+          });
+          return res.data;
+        } catch (error) {
+          console.error("Error updating leave request:", error);
+          throw error;
+        }
+      },
+      async delete(id) {
+        try {
+          await axios.delete(`${API_BASE}/leaves/${id}`, {
+            headers: {
+              "x-user-role": localStorage.getItem(`${STORAGE_PREFIX}user_role`) || "employee",
+              "x-user-id": getCurrentUserId() || "",
+            },
+          });
+          return { success: true };
+        } catch (error) {
+          console.error("Error deleting leave request:", error);
+          throw error;
+        }
       },
     },
   },
@@ -515,7 +585,12 @@ export const base44 = {
 
   users: {
     async inviteUser(email, role = "employee") {
-      const res = await axios.post(`${API_BASE}/users/invite`, { email, role });
+      const res = await axios.post(`${API_BASE}/users/invite`, { email, role }, {
+        headers: {
+          "x-user-role": localStorage.getItem(`${STORAGE_PREFIX}user_role`) || "admin",
+          "x-user-id": getCurrentUserId() || "",
+        },
+      });
       return res.data;
     },
   },

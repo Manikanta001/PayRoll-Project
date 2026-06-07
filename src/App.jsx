@@ -26,6 +26,30 @@ const RequireAuth = ({ children }) => {
   return children;
 };
 
+const RequireRole = ({ children, pageName }) => {
+  const { user } = useAuth();
+  
+  const pageRoles = {
+    UserManagement: ["admin"],
+    Payroll: ["admin", "hr"],
+    Employees: ["admin", "hr"],
+    Reports: ["admin", "hr"],
+    Attendance: ["admin", "hr", "employee"],
+    Dashboard: ["admin", "hr", "employee"],
+    Profile: ["admin", "hr", "employee"],
+    Leaves: ["admin", "hr", "employee"],
+  };
+
+  const allowedRoles = pageRoles[pageName] || ["admin", "hr", "employee"];
+  const userRole = user?.role || "employee";
+
+  if (!allowedRoles.includes(userRole)) {
+    return <Navigate to="/Dashboard" replace />;
+  }
+
+  return children;
+};
+
 const AuthenticatedApp = () => {
   const { user, isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
 
@@ -65,11 +89,13 @@ const AuthenticatedApp = () => {
             path={`/${path}`}
             element={
               <RequireAuth>
-                <RequireElevated>
-                  <LayoutWrapper currentPageName={path}>
-                    <Page />
-                  </LayoutWrapper>
-                </RequireElevated>
+                <RequireRole pageName={path}>
+                  <RequireElevated>
+                    <LayoutWrapper currentPageName={path}>
+                      <Page />
+                    </LayoutWrapper>
+                  </RequireElevated>
+                </RequireRole>
               </RequireAuth>
             }
           />

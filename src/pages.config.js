@@ -10,6 +10,7 @@ import UserManagement from "./pages/UserManagement.jsx";
 import SignIn from "./pages/SignIn.jsx";
 import Register from "./pages/Register.jsx";
 import Profile from "./pages/Profile.jsx";
+import Leaves from "./pages/Leaves.jsx";
 
 export const pagesConfig = {
   Layout,
@@ -25,5 +26,6 @@ export const pagesConfig = {
     SignIn,
     Register,
     Profile,
+    Leaves,
   },
 };

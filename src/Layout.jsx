@@ -42,19 +42,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-const navigation = [
-  { name: 'Dashboard', href: 'Dashboard', icon: LayoutDashboard },
-  { name: 'Employees', href: 'Employees', icon: Users },
-  { name: 'Attendance', href: 'Attendance', icon: Calendar },
-  { name: 'Payroll', href: 'Payroll', icon: IndianRupee },
-  { name: 'Payslips', href: 'Payslips', icon: FileText },
-  { name: 'Reports', href: 'Reports', icon: BarChart3 },
-  { name: 'Sign In', href: 'SignIn', icon: LogIn },
-];
 
-const adminNavigation = [
-  { name: 'User Management', href: 'UserManagement', icon: Settings },
-];
 
 export default function Layout({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -135,10 +123,39 @@ export default function Layout({ children, currentPageName }) {
     return name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U';
   };
 
-  const isAdmin = user?.role === 'admin';
-  const isHR = user?.role === 'hr' || user?.role === 'admin';
-
-  const navItems = isAdmin ? [...navigation, ...adminNavigation] : navigation;
+  const navItems = React.useMemo(() => {
+    const role = user?.role;
+    if (role === 'admin') {
+      return [
+        { name: 'Dashboard', href: 'Dashboard', icon: LayoutDashboard },
+        { name: 'Employees', href: 'Employees', icon: Users },
+        { name: 'Attendance', href: 'Attendance', icon: Calendar },
+        { name: 'Leaves', href: 'Leaves', icon: ClipboardCheck },
+        { name: 'Payroll', href: 'Payroll', icon: IndianRupee },
+        { name: 'Payslips', href: 'Payslips', icon: FileText },
+        { name: 'Reports', href: 'Reports', icon: BarChart3 },
+        { name: 'User Management', href: 'UserManagement', icon: Settings },
+      ];
+    }
+    if (role === 'hr') {
+      return [
+        { name: 'Dashboard', href: 'Dashboard', icon: LayoutDashboard },
+        { name: 'Employees', href: 'Employees', icon: Users },
+        { name: 'Attendance', href: 'Attendance', icon: Calendar },
+        { name: 'Leaves', href: 'Leaves', icon: ClipboardCheck },
+        { name: 'Payroll', href: 'Payroll', icon: IndianRupee },
+        { name: 'Payslips', href: 'Payslips', icon: FileText },
+        { name: 'Reports', href: 'Reports', icon: BarChart3 },
+      ];
+    }
+    // Default / Employee navigation
+    return [
+      { name: 'Dashboard', href: 'Dashboard', icon: LayoutDashboard },
+      { name: 'Attendance', href: 'Attendance', icon: Calendar },
+      { name: 'Leaves', href: 'Leaves', icon: ClipboardCheck },
+      { name: 'Payslips', href: 'Payslips', icon: FileText },
+    ];
+  }, [user]);
 
   return (
     <div className="min-h-screen bg-background">

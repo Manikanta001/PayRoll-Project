@@ -45,11 +45,58 @@ app.use(express.json());
 
 let isConnected = false;
 
+async function seedTestUsers() {
+  try {
+    const passwordHash = await bcrypt.hash("password123", 10);
+    const testUsers = [
+      {
+        full_name: "Test Admin",
+        email: "admin@company.com",
+        passwordHash,
+        role: "admin",
+        is_active: true,
+        is_employee: false,
+      },
+      {
+        full_name: "Test HR",
+        email: "hr@company.com",
+        passwordHash,
+        role: "hr",
+        is_active: true,
+        is_employee: false,
+      },
+      {
+        full_name: "Test Employee",
+        email: "employee@company.com",
+        passwordHash,
+        role: "employee",
+        is_active: true,
+        is_employee: true,
+        department: "Engineering",
+        designation: "Software Engineer",
+        basic_salary: 60000,
+        joining_date: new Date().toISOString(),
+      }
+    ];
+
+    for (const u of testUsers) {
+      const exists = await User.findOne({ email: u.email }).exec();
+      if (!exists) {
+        await User.create(u);
+        console.log(`    seeded test user: ${u.email}`);
+      }
+    }
+  } catch (err) {
+    console.error("Error seeding test users:", err);
+  }
+}
+
 async function connectDB() {
   if (isConnected) return;
   try {
     await mongoose.connect(MONGO_URI);
     isConnected = true;
+    await seedTestUsers();
   } catch (err) {
     console.error("MongoDB connection error:", err.message);
     throw err;
@@ -131,6 +178,25 @@ const Attendance =
 const Payslip =
   mongoose.models.Payslip || mongoose.model("Payslip", payslipSchema);
 
+const leaveRequestSchema = new mongoose.Schema(
+  {
+    employee_id: { type: String, required: true },
+    employee_name: { type: String, required: true },
+    email: { type: String, required: true },
+    type: { type: String, enum: ["Casual", "Sick", "Earned", "Unpaid"], default: "Casual" },
+    start_date: { type: String, required: true },
+    end_date: { type: String, required: true },
+    days: { type: Number, required: true },
+    reason: { type: String },
+    status: { type: String, enum: ["Pending", "Approved", "Rejected"], default: "Pending" },
+    notes: { type: String },
+  },
+  { timestamps: { createdAt: "created_date", updatedAt: "updated_date" } }
+);
+
+const LeaveRequest =
+  mongoose.models.LeaveRequest || mongoose.model("LeaveRequest", leaveRequestSchema);
+
 function requireRole(...roles) {
   return (req, res, next) => {
     const userRole = req.headers["x-user-role"];
@@ -154,11 +220,18 @@ app.use(async (req, res, next) => {
 
 app.post("/api/auth/register", async (req, res) => {
   try {
-    const { full_name, email, password, role } = req.body || {};
+    const { full_name, email, password, role, rolePassword } = req.body || {};
     if (!full_name || !email || !password) {
       return res
         .status(400)
         .json({ message: "full_name, email and password are required" });
+    }
+    
+    if (role === "admin" && rolePassword !== "admin@9878") {
+      return res.status(403).json({ message: "Invalid Admin registration password." });
+    }
+    if (role === "hr" && rolePassword !== "hr@9878") {
+      return res.status(403).json({ message: "Invalid HR registration password." });
     }
 
     const emailLower = email.toLowerCase();
@@ -388,6 +461,9 @@ app.delete(
         return res.status(404).json({ message: "Employee not found" });
       }
 
+      await Payslip.deleteMany({ employee_id: id });
+      await Attendance.deleteMany({ employee_id: id });
+
       res.json({ success: true, message: "Employee deleted successfully" });
     } catch (err) {
       console.error("Delete employee error:", err);
@@ -398,7 +474,18 @@ app.delete(
 
 app.get("/api/attendance", async (req, res) => {
   try {
-    const records = await Attendance.find().sort({ date: -1 }).lean().exec();
+    const userRole = req.headers["x-user-role"];
+    const userId = req.headers["x-user-id"];
+
+    let query = {};
+    if (userRole === "employee") {
+      if (!userId) {
+        return res.status(400).json({ message: "User ID header is required for employees" });
+      }
+      query = { employee_id: userId };
+    }
+
+    const records = await Attendance.find(query).sort({ date: -1 }).lean().exec();
     const mapped = records.map((r) => ({
       id: r._id.toString(),
       employee_id: r.employee_id,
@@ -790,6 +877,7 @@ app.patch("/api/users/:id", requireRole("admin", "hr"), async (req, res) => {
     const updateData = { ...req.body };
     delete updateData.passwordHash;
     delete updateData.password;
+    delete updateData.email;
 
     const user = await User.findByIdAndUpdate(req.params.id, updateData, {
       new: true,
@@ -838,6 +926,81 @@ app.post("/api/users/invite", requireRole("admin", "hr"), async (req, res) => {
     res.status(201).json(plain);
   } catch (err) {
     console.error("Invite user error:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+app.get("/api/leaves", async (req, res) => {
+  try {
+    const userRole = req.headers["x-user-role"];
+    const userId = req.headers["x-user-id"];
+
+    let query = {};
+    if (userRole === "employee") {
+      if (!userId) {
+        return res.status(400).json({ message: "User ID header is required for employees" });
+      }
+      query = { employee_id: userId };
+    }
+
+    const records = await LeaveRequest.find(query).sort({ created_date: -1 }).lean().exec();
+    res.json(records);
+  } catch (err) {
+    console.error("Get leaves error:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+app.post("/api/leaves", async (req, res) => {
+  try {
+    const { employee_id, employee_name, email, type, start_date, end_date, days, reason } = req.body;
+    if (!employee_id || !employee_name || !email || !start_date || !end_date || !days) {
+      return res.status(400).json({ message: "Missing required leave fields" });
+    }
+
+    const record = await LeaveRequest.create({
+      employee_id,
+      employee_name,
+      email,
+      type: type || "Casual",
+      start_date,
+      end_date,
+      days,
+      reason,
+      status: "Pending",
+    });
+    res.status(201).json(record);
+  } catch (err) {
+    console.error("Create leave error:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+app.patch("/api/leaves/:id", requireRole("admin", "hr"), async (req, res) => {
+  try {
+    const record = await LeaveRequest.findByIdAndUpdate(req.params.id, req.body, { new: true }).exec();
+    if (!record) return res.status(404).json({ message: "Leave request not found" });
+    res.json(record);
+  } catch (err) {
+    console.error("Update leave error:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+app.delete("/api/leaves/:id", async (req, res) => {
+  try {
+    const record = await LeaveRequest.findById(req.params.id).exec();
+    if (!record) return res.status(404).json({ message: "Leave request not found" });
+
+    const userRole = req.headers["x-user-role"];
+    if (userRole === "employee" && record.status !== "Pending") {
+      return res.status(400).json({ message: "Cannot delete non-pending leaves" });
+    }
+
+    await LeaveRequest.findByIdAndDelete(req.params.id).exec();
+    res.json({ success: true, message: "Leave request deleted" });
+  } catch (err) {
+    console.error("Delete leave error:", err);
     res.status(500).json({ message: "Internal server error" });
   }
 });

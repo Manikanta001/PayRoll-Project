@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { generatePayslipPDF } from '@/lib/utils';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -41,6 +42,7 @@ export default function Payslips() {
     queryFn: () => base44.entities.Employee.list(),
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: false,
+    enabled: canManagePayslips,
   });
 
   const { data: payslips = [], isLoading: loadingPayslips, error: payslipsError } = useQuery({
@@ -50,7 +52,7 @@ export default function Payslips() {
     retry: false,
   });
 
-  const isLoading = loadingEmployees || loadingPayslips;
+  const isLoading = (canManagePayslips && loadingEmployees) || loadingPayslips;
 
   const deletePayslipMutation = useMutation({
     mutationFn: ({ id, password }) => base44.entities.Payslip.delete(id, password),
@@ -87,47 +89,8 @@ export default function Payslips() {
     return matchesSearch && matchesMonth;
   });
 
-  const employeePayslips = employees.map(emp => {
-    const empPayslips = payslips.filter(s => s.employee_id === emp.id);
-    return {
-      ...emp,
-      payslips: empPayslips.sort((a, b) => b.month.localeCompare(a.month)),
-      totalPaid: empPayslips.reduce((sum, s) => sum + (s.net_salary || 0), 0),
-    };
-  }).filter(emp => emp.payslips.length > 0);
-
   const handleDownloadPayslip = (payslip) => {
-    const content = `
-PAYSLIP - ${format(new Date(payslip.month + '-01'), 'MMMM yyyy')}
-=====================================
-Employee: ${payslip.employee_name}
-Email: ${payslip.email}
-
-EARNINGS:
-Basic Salary: ₹${payslip.basic_salary?.toLocaleString()}
-Allowances: ₹${payslip.allowances?.toLocaleString()}
-
-DEDUCTIONS:
-Deductions: ₹${payslip.deductions?.toLocaleString()}
-
-NET SALARY: ₹${payslip.net_salary?.toLocaleString()}
-
-ATTENDANCE:
-Present Days: ${payslip.present_days}
-Total Days: ${payslip.total_days}
-
-Notes: ${payslip.notes || 'N/A'}
-=====================================
-    `;
-    
-    const blob = new Blob([content], { type: 'text/plain' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `payslip-${payslip.employee_name}-${payslip.month}.txt`;
-    a.click();
-    window.URL.revokeObjectURL(url);
-    toast.success('✅ Payslip downloaded');
+    generatePayslipPDF(payslip);
   };
 
   const handleEmailPayslip = async (payslip) => {
@@ -193,7 +156,7 @@ PayRoll Pro Team
     );
   }
 
-  if (payslipsError || employeesError) {
+  if (payslipsError || (canManagePayslips && employeesError)) {
     return (
       <div className="space-y-6">
         <div>

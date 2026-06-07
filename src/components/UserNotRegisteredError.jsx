@@ -1,4 +1,5 @@
 import React from 'react';
+import { base44 } from '@/api/base44Client';
 
 const UserNotRegisteredError = () => {
   return (
@@ -16,11 +17,17 @@ const UserNotRegisteredError = () => {
           </p>
           <div className="p-4 bg-slate-50 rounded-md text-sm text-slate-600">
             <p>If you believe this is an error, you can:</p>
-            <ul className="list-disc list-inside mt-2 space-y-1">
+            <ul className="list-disc list-inside mt-2 space-y-1 mb-4 text-left">
               <li>Verify you are logged in with the correct account</li>
               <li>Contact the app administrator for access</li>
               <li>Try logging out and back in again</li>
             </ul>
+            <button
+              onClick={() => base44.auth.logout()}
+              className="mt-4 w-full py-2 px-4 bg-slate-800 hover:bg-slate-900 text-white rounded-md text-sm font-semibold transition-colors"
+            >
+              Log Out / Back to Login
+            </button>
           </div>
         </div>
       </div>

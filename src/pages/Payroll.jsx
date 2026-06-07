@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { generatePayslipPDF } from '@/lib/utils';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -98,35 +99,7 @@ export default function Payroll() {
   const paidCount = monthRecords.filter(r => r.status === 'Paid').length;
 
   const handleDownloadPayslip = (salary) => {
-    const content = `
-PAYSLIP - ${format(new Date(salary.month + '-01'), 'MMMM yyyy')}
-=====================================
-Employee: ${salary.employee_name}
-Department: ${salary.department}
-
-EARNINGS:
-Basic Salary: ₹${salary.basic_salary?.toLocaleString()}
-HRA (20%): ₹${salary.hra?.toLocaleString()}
-DA (10%): ₹${salary.da?.toLocaleString()}
-Gross Salary: ₹${salary.gross_salary?.toLocaleString()}
-
-DEDUCTIONS:
-PF (12%): ₹${salary.pf_deduction?.toLocaleString()}
-Tax (5%): ₹${salary.tax_deduction?.toLocaleString()}
-Total Deductions: ₹${salary.total_deductions?.toLocaleString()}
-
-NET SALARY: ₹${salary.net_salary?.toLocaleString()}
-=====================================
-    `;
-    
-    const blob = new Blob([content], { type: 'text/plain' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `payslip-${salary.employee_name}-${salary.month}.txt`;
-    a.click();
-    window.URL.revokeObjectURL(url);
-    toast.success('Payslip downloaded');
+    generatePayslipPDF(salary);
   };
 
   const handleEmailPayslip = async (salary) => {
